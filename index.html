@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meal Selection</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+
+  body {
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    background: #f3f3f3;
+    padding: 15px;
+    margin: 0;
+  }
+
+  .header-title {
+    text-align: left;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a2e;
+    padding: 15px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+
+  /* ── Flight info card ── */
+  .flight-info {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+
+  .sector-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+  .sector-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .sector-tab {
+    padding: 9px 18px;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    background: white;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s;
+  }
+  .sector-tab.active { background: #ff6a3d; color: white; border-color: #ff6a3d; }
+
+  .info-divider { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+
+  /* ── Traveller chips ── */
+  .traveller-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .traveller-chip {
+    padding: 9px 18px;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    background: white;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s;
+  }
+  .traveller-chip.active { background: #ff6a3d; color: white; border-color: #ff6a3d; }
+  .traveller-chip .cart-badge {
+    background: #4CAF50;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 5px;
+    font-weight: 700;
+  }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    background: white;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+  }
+
+  /* DEFAULT state: search icon + tabs + veg toggle in one row */
+  .filter-default-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .search-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid #ddd;
+    background: white;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .search-icon-btn:hover { border-color: #ff6a3d; color: #ff6a3d; }
+
+  .category-tabs-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex: 1;
+  }
+  .category-tabs-wrap::-webkit-scrollbar { display: none; }
+
+  .cat-tab {
+    padding: 7px 16px;
+    border: 1.5px solid #ddd;
+    border-radius: 20px;
+    background: white;
+    color: #555;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.18s;
+    font-family: 'Roboto', sans-serif;
+  }
+  .cat-tab.active { background: #ff6a3d; color: white; border-color: #ff6a3d; }
+  .cat-tab:hover:not(.active) { border-color: #ff6a3d; color: #ff6a3d; }
+
+  /* Only Veg toggle — shared */
+  .veg-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .veg-toggle-label { font-size: 13px; font-weight: 500; color: #333; }
+
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    cursor: pointer;
+    display: block;
+  }
+  .toggle-switch input { display: none; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #ddd;
+    border-radius: 22px;
+    transition: background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: #4CAF50; }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-switch input:checked ~ .toggle-thumb { left: 21px; }
+
+  /* SEARCH EXPANDED state */
+  .filter-search-row {
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .filter-bar.search-open .filter-default-row { display: none; }
+  .filter-bar.search-open .filter-search-row  { display: flex; }
+
+  .search-close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+  }
+  .search-close-btn:hover { color: #ff6a3d; }
+
+  .search-input-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    border: 1.5px solid #ff6a3d;
+    border-radius: 8px;
+    padding: 8px 14px;
+    background: white;
+  }
+  .search-input-box input {
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+    width: 100%;
+    background: transparent;
+  }
+  .search-input-box input::placeholder { color: #aaa; }
+
+  /* ── Menu ── */
+  .menu-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .no-results { padding: 40px 20px; text-align: center; color: #999; font-size: 15px; }
+
+  /* ── Meal item ── */
+  .meal-item {
+    display: flex;
+    gap: 14px;
+    padding: 16px 15px;
+    border-bottom: 1px solid #eee;
+    align-items: flex-start;
+  }
+  .meal-item:last-child { border-bottom: none; }
+
+  /* Image col */
+  .meal-img-col { flex-shrink: 0; }
+
+  .meal-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .beverage-badge {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #7c3aed;
+    color: white;
+    font-size: 9px;
+    padding: 3px 7px;
+    border-radius: 10px;
+    white-space: nowrap;
+    font-weight: 500;
+    width: fit-content;
+  }
+
+  /* Content col */
+  .meal-left { flex: 1; min-width: 0; }
+
+  /* Prebook row: veg indicator + PREBOOK ONLY text inline */
+  .prebook-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  /* Veg/nonveg square indicator */
+  .veg-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    border: 1.5px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .veg-indicator.veg  { border-color: #27ae60; }
+  .veg-indicator.nonveg { border-color: #c0392b; }
+  .veg-indicator .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .veg-indicator.veg .dot  { background: #27ae60; }
+  .veg-indicator.nonveg .dot { background: #c0392b; }
+
+  .prebook-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #e74c3c;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .meal-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .meal-description {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.45;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .calorie-liner {
+    font-size: 13px;
+    color: #444;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .allergen-inline {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .allergen-inline strong { color: #1a1a2e; font-weight: 600; }
+
+  /* Bottom row: Nutritional Facts toggle + Add button on same line */
+  .meal-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .nutrition-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: #ff6a3d;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-weight: 600;
+    font-family: 'Roboto', sans-serif;
+    flex-shrink: 0;
+  }
+  .nutrition-toggle .arrow { font-size: 10px; transition: transform 0.2s; }
+
+  /* Add button — solid orange, same row as Nutritional Facts */
+  .add-btn {
+    padding: 9px 18px;
+    background: #ff6a3d;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .add-btn:hover { background: #e55a2b; }
+
+  /* Qty controls — same row as Nutritional Facts */
+  .qty-controls {
+    display: flex;
+    align-items: center;
+    border: 2px solid #ff6a3d;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .qty-btn {
+    width: 34px;
+    height: 36px;
+    border: none;
+    background: white;
+    color: #ff6a3d;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    transition: background 0.15s;
+    line-height: 1;
+    padding: 0;
+  }
+  .qty-btn:hover { background: #fff0eb; }
+  .qty-btn:disabled { color: #ccc; cursor: not-allowed; }
+  .qty-btn:disabled:hover { background: white; }
+
+  .qty-count {
+    min-width: 28px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a2e;
+    padding: 0 4px;
+  }
+
+  /* Nutrition dropdown */
+  .nutrition-details {
+    display: none;
+    margin-top: 10px;
+    border: 1.5px solid #ff6a3d;
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 12.5px;
+  }
+  .nutrition-details.open { display: block; }
+
+  .nutr-table-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    background: white;
+    padding: 10px 12px 6px 12px;
+    border-bottom: 2px solid #ff6a3d;
+  }
+  .nutr-table-header .col-title { font-weight: 700; font-size: 14px; color: #1a1a2e; }
+  .nutr-table-header .col-per,
+  .nutr-table-header .col-rda {
+    font-size: 11px; color: #888; text-align: right; font-weight: 500;
+    white-space: nowrap; padding-left: 16px; align-self: flex-end;
+  }
+
+  .nutr-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    padding: 7px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    background: white;
+  }
+  .nutr-row:last-child { border-bottom: none; }
+  .nutr-row.sub-row { padding-left: 24px; background: #fafafa; }
+  .nutr-row .nutr-label { font-size: 13px; color: #333; }
+  .nutr-row.main-row .nutr-label { font-weight: 700; color: #1a1a2e; }
+  .nutr-row.sub-row .nutr-label { font-weight: 400; color: #555; font-size: 12px; }
+  .nutr-row .nutr-val { text-align: right; font-weight: 600; color: #1a1a2e; font-size: 13px; padding-left: 16px; white-space: nowrap; }
+  .nutr-row.sub-row .nutr-val { font-weight: 400; font-size: 12px; }
+  .nutr-row .nutr-rda { text-align: right; color: #888; font-size: 12px; padding-left: 12px; white-space: nowrap; }
+  .nutr-row.sub-row .nutr-rda { font-size: 11px; }
+
+  .nutr-calorie-note {
+    background: white;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #888;
+    line-height: 1.5;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  /* ── Pagination ── */
+  .controls {
+    text-align: center;
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .controls button {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 8px;
+    background: #ff6a3d;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 600;
+  }
+  .controls button:hover { background: #e55a2b; }
+  .controls button:disabled { background: #ccc; cursor: not-allowed; }
+  .page-indicator { font-size: 14px; color: #555; font-weight: 500; white-space: nowrap; }
+
+  /* ── Bottom total bar ── */
+  .total-section {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 14px 15px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 100;
+  }
+  .total-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .total-items { font-size: 14px; color: #444; }
+  .total-items .bold-num { font-weight: 800; color: #1a1a2e; font-size: 15px; }
+
+  .confirm-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: #ff6a3d;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif;
+  }
+  .confirm-btn:hover { background: #e55a2b; }
+  .confirm-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  .body-padding { padding-bottom: 120px; }
+
+  /* ── Screens ── */
+  .success-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: white;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  .success-icon { font-size: 60px; color: green; }
+
+  .order-summary-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #f3f3f3;
+    overflow-y: auto;
+    padding-bottom: 100px;
+  }
+  .summary-header {
+    background: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+  .summary-header h2 { margin: 0 0 10px 0; color: #1a1a2e; font-size: 24px; }
+  .summary-flight-info { display: flex; justify-content: center; gap: 20px; font-size: 14px; color: #666; }
+
+  .summary-section { background: white; margin: 15px; border-radius: 12px; padding: 15px; }
+  .summary-section h3 {
+    margin: 0 0 15px 0; font-size: 16px; color: #333;
+    border-bottom: 1px solid #eee; padding-bottom: 10px;
+  }
+
+  .order-item {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+  }
+  .order-item:last-child { border-bottom: none; }
+  .order-item-name { flex: 1; font-size: 14px; color: #333; }
+  .order-item-price { font-weight: 600; color: #ff6a3d; }
+
+  .summary-total {
+    display: flex; justify-content: space-between;
+    padding: 15px 0; font-size: 18px; font-weight: 700;
+    border-top: 2px solid #eee; margin-top: 10px;
+  }
+  .summary-total-amount { color: #ff6a3d; }
+
+  .summary-actions { display: flex; gap: 10px; margin-top: 15px; }
+  .back-btn {
+    flex: 1; padding: 15px; border: 2px solid #ff6a3d; border-radius: 10px;
+    background: white; color: #ff6a3d; font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  .back-btn:hover { background: #fff5f0; }
+  .proceed-btn {
+    flex: 1; padding: 15px; border: none; border-radius: 10px;
+    background: #ff6a3d; color: white; font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  .proceed-btn:hover { background: #e55a2b; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    body { padding: 8px; }
+    .header-title { font-size: 22px; padding: 10px; }
+    .meal-img { width: 85px; height: 85px; }
+    .add-btn { padding: 8px 12px; font-size: 13px; }
+    .body-padding { padding-bottom: 110px; }
+  }
+</style>
+</head>
+
+<body>
+
+<div id="mainContent">
+  <div class="header-title">MEAL SELECTION</div>
+
+  <!-- Flight / Sector -->
+  <div class="flight-info">
+    <div class="sector-label">Select Sector:</div>
+    <div class="sector-tabs" id="sectorTabs">
+      <button class="sector-tab active" data-value="BOM-DEL" onclick="selectSector(this)">BOM → DEL</button>
+      <button class="sector-tab" data-value="DEL-BOM" onclick="selectSector(this)">DEL → BOM</button>
+    </div>
+
+    <hr class="info-divider"/>
+
+    <div style="font-size:13px;color:#666;margin-bottom:8px;">Travellers:</div>
+    <div class="traveller-chips" id="travellerChips"></div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filterBar">
+
+    <!-- DEFAULT: icon + tabs + veg -->
+    <div class="filter-default-row">
+      <button class="search-icon-btn" onclick="openSearch()" title="Search meals">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+
+      <div class="category-tabs-wrap" id="categoryTabs">
+        <button class="cat-tab active" data-cat="all" onclick="selectCategory(this)">All Meals</button>
+        <button class="cat-tab" data-cat="gourmet" onclick="selectCategory(this)">Gourmet</button>
+        <button class="cat-tab" data-cat="kids" onclick="selectCategory(this)">Kids</button>
+        <button class="cat-tab" data-cat="desserts" onclick="selectCategory(this)">Desserts</button>
+        <button class="cat-tab" data-cat="refreshments" onclick="selectCategory(this)">Refreshments</button>
+        <button class="cat-tab" data-cat="salads" onclick="selectCategory(this)">Salads</button>
+        <button class="cat-tab" data-cat="beverages" onclick="selectCategory(this)">Beverages</button>
+      </div>
+
+      <div class="veg-toggle-wrap">
+        <span class="veg-toggle-label">Only Veg</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="vegToggle" onchange="applyFilters()" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- SEARCH EXPANDED -->
+    <div class="filter-search-row">
+      <button class="search-close-btn" onclick="closeSearch()" title="Close search">✕</button>
+      <div class="search-input-box">
+        <input type="text" id="searchInput" placeholder="Search For Meals" oninput="applyFilters()" />
+      </div>
+      <div class="veg-toggle-wrap">
+        <span class="veg-toggle-label">Only Veg</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="vegToggle2" onchange="syncVegToggle(this)" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="menu" class="menu-container"></div>
+
+  <div class="controls">
+    <button id="prevBtn" onclick="prevPage()" disabled>← Prev</button>
+    <span class="page-indicator" id="pageIndicator">Page 1 of 1</span>
+    <button id="nextBtn" onclick="nextPage()">Next →</button>
+  </div>
+
+  <div class="body-padding"></div>
+</div>
+
+<!-- Total bar -->
+<div class="total-section">
+  <div class="total-details">
+    <div class="total-items" id="totalItemsLabel">0 items • ₹0</div>
+  </div>
+  <button id="confirmBtn" class="confirm-btn" onclick="confirmOrder()" disabled>Confirm Order</button>
+</div>
+
+<!-- Order Summary Screen -->
+<div id="orderSummaryScreen" class="order-summary-screen">
+  <div class="summary-header">
+    <h2>📋 Order Summary</h2>
+    <div class="summary-flight-info">
+      <span id="summaryFlight">BOM → DEL</span>
+      <span id="summaryTravellers">👤 2 Travellers</span>
+    </div>
+  </div>
+  <div class="summary-section">
+    <h3>Selected Meals</h3>
+    <div id="orderItems"></div>
+    <div class="summary-total">
+      <span>Total Amount</span>
+      <span class="summary-total-amount">₹<span id="summaryTotalAmount">0</span></span>
+    </div>
+  </div>
+  <div class="summary-section">
+    <h3>Order Details</h3>
+    <div id="orderDetails"></div>
+  </div>
+  <div style="margin: 15px;">
+    <div class="summary-actions">
+      <button class="back-btn" onclick="goBackToMenu()">← Back to Menu</button>
+      <button class="proceed-btn" onclick="finalizeOrder()">Confirm Order →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Screen -->
+<div id="successScreen" class="success-screen">
+  <div class="success-icon">✅</div>
+  <h2 style="font-family:'Roboto',sans-serif;">Order Confirmed!</h2>
+</div>
+
+<script>
+const API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
+const STORAGE_KEY = "mealSelectionState_v3";
+
+let allMeals = [];
+let filteredMeals = [];
+let travellerCarts = {};
+let currentPage = 0;
+const pageSize = 10;
+const MAX_QTY = 5;
+
+// Travellers from ticket — replace ticketTravellers with actual ticket API value
+let ticketTravellers = 2;
+let selectedTravellers = ticketTravellers;
+let currentTraveller = 1;
+let selectedFlight = "BOM-DEL";
+let selectedCategory = "all";
+
+// ─── Search open/close ────────────────────────────────────────────────────────
+function openSearch() {
+  document.getElementById("filterBar").classList.add("search-open");
+  document.getElementById("searchInput").focus();
+}
+
+function closeSearch() {
+  document.getElementById("filterBar").classList.remove("search-open");
+  document.getElementById("searchInput").value = "";
+  applyFilters();
+}
+
+// Keep both veg toggles in sync
+function syncVegToggle(src) {
+  const other = src.id === "vegToggle" ? "vegToggle2" : "vegToggle";
+  document.getElementById(other).checked = src.checked;
+  applyFilters();
+}
+
+// ─── Persist ─────────────────────────────────────────────────────────────────
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      travellerCarts, selectedFlight, currentTraveller, currentPage, selectedCategory
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    travellerCarts   = s.travellerCarts   || {};
+    selectedFlight   = s.selectedFlight   || "BOM-DEL";
+    currentTraveller = s.currentTraveller || 1;
+    currentPage      = s.currentPage      || 0;
+    selectedCategory = s.selectedCategory || "all";
+    document.querySelectorAll(".sector-tab").forEach(b =>
+      b.classList.toggle("active", b.dataset.value === selectedFlight));
+    document.querySelectorAll(".cat-tab").forEach(b =>
+      b.classList.toggle("active", b.dataset.cat === selectedCategory));
+  } catch(e) {}
+}
+
+// ─── Sector ──────────────────────────────────────────────────────────────────
+function selectSector(el) {
+  document.querySelectorAll(".sector-tab").forEach(b => b.classList.remove("active"));
+  el.classList.add("active");
+  selectedFlight = el.dataset.value;
+  saveState();
+}
+
+// ─── Traveller chips ──────────────────────────────────────────────────────────
+function renderTravellerChips() {
+  const container = document.getElementById("travellerChips");
+  let html = "";
+  for (let t = 1; t <= selectedTravellers; t++) {
+    const count = getTravellerCartCount(t);
+    const active = currentTraveller === t ? "active" : "";
+    html += `<button class="traveller-chip ${active}" onclick="switchTraveller(${t})">
+      Traveller ${t}${count > 0 ? `<span class="cart-badge">${count}</span>` : ""}
+    </button>`;
+  }
+  container.innerHTML = html;
+}
+
+function switchTraveller(t) {
+  currentTraveller = t;
+  render();
+  renderTravellerChips();
+}
+
+// ─── Category ─────────────────────────────────────────────────────────────────
+function selectCategory(el) {
+  document.querySelectorAll(".cat-tab").forEach(b => b.classList.remove("active"));
+  el.classList.add("active");
+  selectedCategory = el.dataset.cat;
+  currentPage = 0;
+  applyFilters();
+}
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const query = (document.getElementById("searchInput").value || "").toLowerCase().trim();
+  const vegOnly = document.getElementById("vegToggle").checked || document.getElementById("vegToggle2").checked;
+
+  filteredMeals = allMeals.filter(meal => {
+    const cat  = (meal.mealCategory || "").toLowerCase();
+    const name = (meal.mealName || "").toLowerCase();
+    const desc = extractText(meal.mealDescription).toLowerCase();
+
+    const matchCat    = selectedCategory === "all" || cat === selectedCategory;
+    const matchVeg    = !vegOnly || (meal.mealType || "").toLowerCase() === "veg";
+    const matchSearch = !query || name.includes(query) || desc.includes(query);
+
+    return matchCat && matchVeg && matchSearch;
+  });
+
+  currentPage = 0;
+  render();
+  saveState();
+}
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+function extractText(field) {
+  if (!field) return "";
+  if (typeof field === "string") return field;
+  if (Array.isArray(field)) return field.map(extractText).join(", ");
+  if (field.text) return field.text;
+  if (field.content) return field.content.map(extractText).join(" ");
+  return "";
+}
+
+function getImage(meal) {
+  let url = meal.mealThumbnailImage?.filename || meal.mealThumbnailImage || meal.mealFullImage || "";
+  if (!url) return "https://via.placeholder.com/100";
+  if (url.startsWith("//")) url = "https:" + url;
+  return url;
+}
+
+function getPrice(meal) {
+  const prices = { "Easter Special ( Non-Veg)": 850, "default": 650 };
+  return prices[meal.mealName] || prices["default"];
+}
+
+function getNutrition(meal) {
+  return (meal.nutritionFacts && meal.nutritionFacts[0]) || null;
+}
+
+function getAllergens(meal) {
+  const a = meal.allergens || meal.allergenInfo || "";
+  if (typeof a === "string" && a.trim()) {
+    return a.replace(/allergens?:/i, "").split(/,/).map(s => s.trim()).filter(Boolean);
+  }
+  if (Array.isArray(a) && a.length) return a;
+  return [];
+}
+
+function allergenName(a) {
+  if (typeof a === "string") return a;
+  return a.allergen || a.allergenName || a.name || "";
+}
+
+// ─── Nutritional HTML ─────────────────────────────────────────────────────────
+function buildNutritionHTML(nutrition) {
+  if (!nutrition) return "";
+
+  function mainRow(label, val, rda) {
+    if (!val) return "";
+    return `<div class="nutr-row main-row">
+      <span class="nutr-label">${label}</span>
+      <span class="nutr-val">${val}</span>
+      <span class="nutr-rda">${rda || "-"}</span>
+    </div>`;
+  }
+  function subRow(label, val, rda) {
+    if (!val) return "";
+    return `<div class="nutr-row sub-row">
+      <span class="nutr-label">${label}</span>
+      <span class="nutr-val">${val}</span>
+      <span class="nutr-rda">${rda || "-"}</span>
+    </div>`;
+  }
+
+  let rows = "";
+  rows += mainRow("Energy",        nutrition.energy,                                  nutrition.energyRdaPercentage        ? nutrition.energyRdaPercentage+"%"        : "");
+  rows += mainRow("Protein",       nutrition.protein,                                 nutrition.proteinRdaPercentage       ? nutrition.proteinRdaPercentage+"%"       : "");
+  rows += mainRow("Carbohydrates", nutrition.carbohydrates||nutrition.totalCarbohydrate, nutrition.carbohydratesRdaPercentage ? nutrition.carbohydratesRdaPercentage+"%" : "");
+  rows += mainRow("Total Fat",     nutrition.fat||nutrition.totalFat,                 nutrition.totalFatRdaPercentage      ? nutrition.totalFatRdaPercentage+"%"      : "");
+  rows += subRow("Saturated Fat",  nutrition.saturatedFat,                            nutrition.saturatedFatRdaPercentage  ? nutrition.saturatedFatRdaPercentage+"%"  : "");
+  rows += subRow("Unsaturated Fat",nutrition.unsaturatedFat||nutrition.monounsaturatedFat, nutrition.unSaturatedFatRdaPercentage || "-");
+  rows += subRow("Trans Fat",      nutrition.transFat,                                nutrition.transFatRdaPercentage      || "-");
+  rows += mainRow("Total Sugar",   nutrition.sugar||nutrition.totalSugars,            nutrition.sugarRdaPercentage         ? nutrition.sugarRdaPercentage+"%"         : "");
+  rows += mainRow("Sodium",        nutrition.sodium,                                  nutrition.sodiumRdaPercentage        ? nutrition.sodiumRdaPercentage+"%"        : "");
+  rows += mainRow("Fibre",         nutrition.fibre||nutrition.dietaryFiber,           nutrition.fibreRdaPercentage         ? nutrition.fibreRdaPercentage+"%"         : "");
+
+  return `
+    <div class="nutr-table-header">
+      <span class="col-title">Nutritional Facts</span>
+      <span class="col-per">Per 100 g</span>
+      <span class="col-rda">%RDA Values</span>
+    </div>
+    ${rows}
+    <div class="nutr-calorie-note">Average active adult requires 2,000 kcal energy per day, however, calorie needs may vary</div>
+  `;
+}
+
+function toggleNutrition(uid) {
+  const btn  = document.getElementById("nt-btn-"+uid);
+  const det  = document.getElementById("nt-details-"+uid);
+  const open = det.classList.toggle("open");
+  btn.innerHTML = `Nutritional Facts <span class="arrow">${open ? "∧" : "∨"}</span>`;
+}
+
+// ─── Qty helpers ──────────────────────────────────────────────────────────────
+function getQty(index) {
+  return (travellerCarts["traveller"+currentTraveller] || {})[index] || 0;
+}
+
+function increase(index) {
+  const key = "traveller"+currentTraveller;
+  if (!travellerCarts[key]) travellerCarts[key] = {};
+  const cur = travellerCarts[key][index] || 0;
+  if (cur < MAX_QTY) travellerCarts[key][index] = cur + 1;
+  render(); renderTravellerChips();
+}
+
+function decrease(index) {
+  const key = "traveller"+currentTraveller;
+  if (!travellerCarts[key]) travellerCarts[key] = {};
+  if ((travellerCarts[key][index] || 0) > 0) travellerCarts[key][index]--;
+  render(); renderTravellerChips();
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const container = document.getElementById("menu");
+  container.innerHTML = "";
+
+  const totalPages = Math.max(1, Math.ceil(filteredMeals.length / pageSize));
+  const start      = currentPage * pageSize;
+  const pageItems  = filteredMeals.slice(start, start + pageSize);
+
+  document.getElementById("pageIndicator").textContent = `Page ${currentPage+1} of ${totalPages}`;
+  document.getElementById("prevBtn").disabled = currentPage === 0;
+  document.getElementById("nextBtn").disabled = currentPage >= totalPages - 1;
+
+  if (pageItems.length === 0) {
+    container.innerHTML = '<div class="no-results">No meals found matching your filters.</div>';
+    updateTotal();
+    return;
+  }
+
+  pageItems.forEach(meal => {
+    const idx  = meal.__originalIndex;
+    const qty  = getQty(idx);
+    const price = getPrice(meal);
+    const nutrition = getNutrition(meal);
+    const allergens = getAllergens(meal);
+
+    const div = document.createElement("div");
+    div.className = "meal-item";
+
+    const isVeg = (meal.mealType || "").toLowerCase() === "veg";
+
+    // Prebook row: veg indicator + text (only if prebookLiner exists)
+    const prebookRow = meal.prebookLiner ? `
+      <div class="prebook-row">
+        <div class="veg-indicator ${isVeg ? 'veg' : 'nonveg'}"><div class="dot"></div></div>
+        <span class="prebook-text">${meal.prebookLiner}</span>
+      </div>` : `
+      <div class="prebook-row" style="margin-bottom:4px;">
+        <div class="veg-indicator ${isVeg ? 'veg' : 'nonveg'}"><div class="dot"></div></div>
+      </div>`;
+
+    // Calorie liner
+    const calorieLiner = meal.calorieAndGramLiner
+      ? `<div class="calorie-liner">${meal.calorieAndGramLiner}</div>` : "";
+
+    // Allergens
+    const allergenNames = allergens.map(allergenName).filter(Boolean);
+    const allergenHtml  = allergenNames.length
+      ? `<div class="allergen-inline"><strong>Allergens:</strong> ${allergenNames.join(", ")}</div>` : "";
+
+    // Nutrition content
+    const nutrContent = buildNutritionHTML(nutrition);
+
+    // Bottom row: Nutritional Facts toggle (left) + Add/Qty (right)
+    const actionHtml = qty === 0
+      ? `<button class="add-btn" onclick="increase(${idx})">Add • ₹${price}</button>`
+      : `<div class="qty-controls">
+          <button class="qty-btn" onclick="decrease(${idx})" ${qty<=1?'':''}> − </button>
+          <div class="qty-count">${qty}</div>
+          <button class="qty-btn" onclick="increase(${idx})" ${qty>=MAX_QTY?'disabled':''}> + </button>
+        </div>`;
+
+    const bottomRow = nutrContent ? `
+      <div class="meal-bottom-row">
+        <button class="nutrition-toggle" id="nt-btn-${idx}" onclick="toggleNutrition(${idx})">
+          Nutritional Facts <span class="arrow">∨</span>
+        </button>
+        ${actionHtml}
+      </div>
+      <div class="nutrition-details" id="nt-details-${idx}">${nutrContent}</div>` : `
+      <div class="meal-bottom-row" style="justify-content:flex-end;">
+        ${actionHtml}
+      </div>`;
+
+    div.innerHTML = `
+      <div class="meal-img-col">
+        <img class="meal-img" src="${getImage(meal)}" onerror="this.src='https://via.placeholder.com/100'"/>
+        ${meal.beverageIncluded ? '<div class="beverage-badge">🥤 Beverage Included</div>' : ''}
+      </div>
+      <div class="meal-left">
+        ${prebookRow}
+        <div class="meal-name">${meal.mealName}</div>
+        <div class="meal-description">${extractText(meal.mealDescription)}</div>
+        ${calorieLiner}
+        ${allergenHtml}
+        ${bottomRow}
+      </div>
+    `;
+
+    container.appendChild(div);
+  });
+
+  updateTotal();
+  saveState();
+}
+
+// ─── Totals ───────────────────────────────────────────────────────────────────
+function getTravellerCartCount(t) {
+  return Object.values(travellerCarts["traveller"+t] || {}).reduce((a,b)=>a+b, 0);
+}
+
+function getTotalItems() {
+  let n = 0;
+  for (let t = 1; t <= selectedTravellers; t++) n += getTravellerCartCount(t);
+  return n;
+}
+
+function getTotalAmount() {
+  let total = 0;
+  for (let t = 1; t <= selectedTravellers; t++) {
+    const cart = travellerCarts["traveller"+t] || {};
+    Object.keys(cart).forEach(i => { if (cart[i] > 0) total += getPrice(allMeals[i]) * cart[i]; });
+  }
+  return total;
+}
+
+function updateTotal() {
+  const ti = getTotalItems(), ta = getTotalAmount();
+  document.getElementById("totalItemsLabel").innerHTML =
+    `<span class="bold-num">${ti}</span> item${ti!==1?"s":""} • ₹<span class="bold-num">${ta}</span>`;
+  document.getElementById("confirmBtn").disabled = ti === 0;
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+function nextPage() {
+  if (currentPage < Math.ceil(filteredMeals.length/pageSize)-1) { currentPage++; render(); window.scrollTo(0,0); }
+}
+function prevPage() {
+  if (currentPage > 0) { currentPage--; render(); window.scrollTo(0,0); }
+}
+
+// ─── Order summary ────────────────────────────────────────────────────────────
+function confirmOrder() {
+  if (!Object.values(travellerCarts).some(c=>Object.values(c).some(q=>q>0))) {
+    alert("Select at least one item"); return;
+  }
+  showOrderSummary();
+}
+
+function summaryQtyChange(tNum, idx, delta) {
+  const key = "traveller"+tNum;
+  if (!travellerCarts[key]) travellerCarts[key] = {};
+  travellerCarts[key][idx] = Math.min(MAX_QTY, Math.max(0, (travellerCarts[key][idx]||0)+delta));
+  saveState(); renderSummaryItems(); updateTotal(); renderTravellerChips();
+}
+
+function renderSummaryItems() {
+  let html = "", total = 0, hasAny = false;
+  for (let t = 1; t <= selectedTravellers; t++) {
+    const cart = travellerCarts["traveller"+t] || {};
+    const items = Object.keys(cart).filter(i=>cart[i]>0);
+    if (items.length) {
+      hasAny = true;
+      html += `<div style="margin:12px 0 8px;"><strong style="color:#ff6a3d;font-size:13px;">Traveller ${t}</strong></div>`;
+      items.forEach(i => {
+        const qty = cart[i], amt = getPrice(allMeals[i])*qty; total += amt;
+        html += `<div class="order-item">
+          <div class="order-item-name" style="font-size:13px;">${allMeals[i].mealName}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin:0 10px;">
+            <button onclick="summaryQtyChange(${t},${i},-1)" style="width:26px;height:26px;font-size:16px;border:1.5px solid #ff6a3d;color:#ff6a3d;background:white;border-radius:6px;cursor:pointer;font-weight:700;">−</button>
+            <span style="min-width:20px;text-align:center;font-weight:bold;font-size:14px;">${qty}</span>
+            <button onclick="summaryQtyChange(${t},${i},1)" ${qty>=MAX_QTY?'disabled':''} style="width:26px;height:26px;font-size:16px;border:1.5px solid #ff6a3d;color:#ff6a3d;background:white;border-radius:6px;cursor:pointer;font-weight:700;">+</button>
+          </div>
+          <div class="order-item-price">₹${amt}</div>
+        </div>`;
+      });
+    }
+  }
+  if (!hasAny) html = `<div style="text-align:center;color:#666;padding:20px;">No items selected</div>`;
+  document.getElementById("orderItems").innerHTML = html;
+  document.getElementById("summaryTotalAmount").textContent = total;
+
+  const ti = getTotalItems();
+  const unique = new Set();
+  for (let t=1;t<=selectedTravellers;t++) {
+    const c=travellerCarts["traveller"+t]||{};
+    Object.keys(c).forEach(i=>{ if(c[i]>0) unique.add(i); });
+  }
+  document.getElementById("orderDetails").innerHTML =
+    `<div class="order-item"><div class="order-item-name">Total Items</div><div class="order-item-price">${ti}</div></div>
+     <div class="order-item"><div class="order-item-name">Unique Meals</div><div class="order-item-price">${unique.size}</div></div>
+     <div class="order-item"><div class="order-item-name">Total Travellers</div><div class="order-item-price">${selectedTravellers}</div></div>`;
+}
+
+function showOrderSummary() {
+  const map = {"BOM-DEL":"BOM → DEL (QP 1402)","DEL-BOM":"DEL → BOM (QP 1403)"};
+  document.getElementById("summaryFlight").textContent     = map[selectedFlight]||selectedFlight;
+  document.getElementById("summaryTravellers").textContent = `👤 ${selectedTravellers} Traveller${selectedTravellers>1?"s":""}`;
+  renderSummaryItems();
+  document.getElementById("mainContent").style.display        = "none";
+  document.querySelector(".total-section").style.display      = "none";
+  document.getElementById("orderSummaryScreen").style.display = "block";
+}
+
+function goBackToMenu() {
+  document.getElementById("orderSummaryScreen").style.display = "none";
+  document.getElementById("mainContent").style.display        = "block";
+  document.querySelector(".total-section").style.display      = "block";
+}
+
+async function finalizeOrder() {
+  let meals = [];
+  for (let t=1;t<=selectedTravellers;t++) {
+    const cart=travellerCarts["traveller"+t]||{};
+    Object.keys(cart).filter(i=>cart[i]>0).forEach(i=>{
+      meals.push({traveller:t,name:allMeals[i].mealName,qty:cart[i],price:getPrice(allMeals[i])});
+    });
+  }
+  const orderData = {flight:selectedFlight,travellers:selectedTravellers,meals,totalAmount:getTotalAmount()};
+  await fetch("https://webhook.site/621c050e-da15-4fc6-9ce5-62615b82745a",{method:"POST",mode:"no-cors",body:JSON.stringify(orderData)});
+  try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
+  document.getElementById("orderSummaryScreen").style.display = "none";
+  document.getElementById("successScreen").style.display      = "flex";
+  setTimeout(()=>{window.parent.postMessage({type:"MEAL_ORDER_CONFIRMED",data:orderData},"*");},2000);
+}
+
+// ─── Bootstrap ────────────────────────────────────────────────────────────────
+async function init() {
+  loadState();
+  renderTravellerChips();
+  try {
+    const res  = await fetch(API_URL);
+    const data = await res.json();
+    allMeals      = (data.story.content.body||[]).map((m,i)=>({...m,__originalIndex:i}));
+    filteredMeals = [...allMeals];
+    applyFilters();
+  } catch(e) {
+    document.getElementById("menu").innerHTML = '<div class="no-results">Failed to load meals. Please try again.</div>';
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
