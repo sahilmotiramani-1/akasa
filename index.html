@@ -610,8 +610,8 @@
   // Mirrors the SHL contract: build a || delimited key=value string,
   // escape commas/&, URL-encode it, wrap it in the Start Chatting envelope,
   // and postMessage it as a string to the Haptik container.
-  // Each meal line item is sent in the SSR payload format when available:
-  //   ssrCode|ssrKey|price,comma-separated for multiple items.
+  // Each meal line item now also carries the traveller name it belongs to:
+  //   traveller:mealName:qty:price  (joined by "~")
   // -------------------------
   function sendOrderToBot(orderData) {
     const mealsEncoded = orderData.meals
@@ -635,6 +635,7 @@
       "||selected_travellers=" + orderData.selected_travellers +
       "||selected_meals=" + mealsEncoded +
       "||capture_meal_selection=" + mealsEncoded +
+      "||selected_meal=" + (orderData.selected_meal || mealsEncoded) +
       " ";
 
     data = data.split(",").join(";;");
@@ -662,7 +663,9 @@
             traveller: travellerName,
             name: meals[i].mealName,
             qty: travellerQty[i],
-            price: getPrice(meals[i])
+            price: getPrice(meals[i]),
+            ssrCode: meals[i].mealSsrCode || meals[i].mealSsrCode || "",
+            ssrKey: meals[i].mealSsrCode || meals[i].mealSsrCode || ""
           });
         }
       });
@@ -684,6 +687,7 @@
       flight_segment_key: urlParams.get("segment_key") || "",
       selected_travellers: urlParams.get("selected_travellers") || bookingContext.travellers,
       meals: selectedMeals,
+      selected_meal: null,
       totalItems: getTotalItems(),
       totalAmount: getTotalAmount()
     };
