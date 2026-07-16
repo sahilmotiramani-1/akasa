@@ -348,15 +348,7 @@
   </div>
 
   <script>
-  const SSR_AVAILABILITY_URL = "https://staging-agents-relay-uat.qp.akasaair.com/bgws/api/ibe/agents/ssrAvailabilityV2";
-  const STORYBLOK_API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
-  const DEFAULT_API_SOURCE = "CHATBOTWEB";
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const authToken = urlParams.get("auth_token") || urlParams.get("authorization") || "";
-  const qpBotApiKey = urlParams.get("qp_bot_api_key") || urlParams.get("qp-api-key") || "";
-  const qpBotSource = urlParams.get("qp_bot_source") || urlParams.get("qp-bot-source") || DEFAULT_API_SOURCE;
-  const passengerKeys = (urlParams.get("passengerKeys") || urlParams.get("passenger_keys") || urlParams.get("passenger_key") || "").split(",").map(s => s.trim()).filter(Boolean);
+  const API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
 
   let meals = [];
   // quantities is now keyed per traveller: { travellerIndex: { mealIndex: qty } }
@@ -376,6 +368,8 @@
   // -------------------------
   // Booking context, prefilled from the URL the bot builds
   // -------------------------
+  const urlParams = new URLSearchParams(window.location.search);
+
   function parseTravellerNames(raw, count) {
     let names = [];
     if (raw) {
@@ -460,44 +454,7 @@
     return url;
   }
 
-  function parseSsrAvailabilityMeals(data) {
-    const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
-    const parsedMeals = [];
-
-    journeySsrs.forEach(journey => {
-      const mealsGroup = journey?.meals || {};
-
-      Object.values(mealsGroup).forEach(category => {
-        if (!Array.isArray(category)) return;
-
-        category.forEach(item => {
-          if (!item || !item.ssrCode) return;
-          const passengerAvailability = Array.isArray(item.passengerAvailability) ? item.passengerAvailability : [];
-          const availability = passengerAvailability.find(p => passengerKeys.length === 0 || passengerKeys.includes(p.passengerKey)) || passengerAvailability[0];
-          if (!availability) return;
-
-          parsedMeals.push({
-            ssrCode: item.ssrCode,
-            ssrKey: availability.ssrKey || "",
-            mealName: item.ssrName || item.ssrCode,
-            mealDescription: item.description || item.ssrName || "",
-            mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || "",
-            nutritionFacts: item.nutritionFacts || [],
-            beverageIncluded: item.beverageIncluded || false,
-            price: typeof availability.price === "number" ? availability.price : parseFloat(availability.price) || 0,
-            mealTagInfo: [],
-          });
-        });
-      });
-    });
-
-    return parsedMeals;
-  }
-
   function getPrice(meal) {
-    if (typeof meal.price === "number") {
-      return meal.price;
-    }
     return MEAL_PRICES[meal.mealName] || MEAL_PRICES["default"];
   }
 
@@ -506,39 +463,10 @@
     return nutrition ? nutrition.energy : "";
   }
 
-  function apiHeaders() {
-    const headers = {
-      "Content-Type": "application/json",
-      "QP-BOT-SOURCE": qpBotSource,
-    };
-    if (authToken) headers["Authorization"] = authToken;
-    if (qpBotApiKey) headers["QP-BOT-API-KEY"] = qpBotApiKey;
-    return headers;
-  }
-
   async function fetchMeals() {
-    if (passengerKeys.length && authToken && qpBotApiKey) {
-      try {
-        const res = await fetch(SSR_AVAILABILITY_URL, {
-          method: "POST",
-          headers: apiHeaders(),
-          body: JSON.stringify(passengerKeys),
-        });
-        const data = await res.json();
-        meals = parseSsrAvailabilityMeals(data);
-        if (meals.length) {
-          render();
-          return;
-        }
-        console.warn("SSR availability returned no meals, falling back to Storyblok.");
-      } catch (err) {
-        console.warn("SSR availability fetch failed, falling back to Storyblok.", err);
-      }
-    }
-
-    const res = await fetch(STORYBLOK_API_URL);
+    const res = await fetch(API_URL);
     const data = await res.json();
-    meals = data.story?.content?.body || [];
+    meals = data.story.content.body || [];
     render();
   }
 
@@ -689,7 +617,7 @@
     const mealsEncoded = orderData.meals
       .map(m => {
         if (m.ssrCode) {
-          return `${m.ssrCode}|${m.ssrKey || ""}|${m.price}`;
+          return `${m.ssrCode}|${m.price}`;
         }
         return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
       })
@@ -758,12 +686,7 @@
       flight_segment_key: urlParams.get("segment_key") || "",
       selected_travellers: urlParams.get("selected_travellers") || bookingContext.travellers,
       meals: selectedMeals,
-      selected_meal: selectedMeals.map(m => {
-        if (m.ssrCode) {
-          return `${m.ssrCode}|${m.ssrKey || ""}|${m.price}`;
-        }
-        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
-      }).join(","),
+      selected_meal: selectedMeals.map(m => m.ssrCode ? `${m.ssrCode}|${m.price}` : `${m.traveller}:${m.name}:${m.qty}:${m.price}`).join(","),
       totalItems: getTotalItems(),
       totalAmount: getTotalAmount()
     };
