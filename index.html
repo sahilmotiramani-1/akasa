@@ -357,6 +357,14 @@
   const qpBotApiKey = urlParams.get("qp_bot_api_key") || urlParams.get("qp-api-key") || "";
   const qpBotSource = urlParams.get("qp_bot_source") || urlParams.get("qp-bot-source") || DEFAULT_API_SOURCE;
   const passengerKeys = (urlParams.get("passengerKeys") || urlParams.get("passenger_keys") || urlParams.get("passenger_key") || "").split(",").map(s => s.trim()).filter(Boolean);
+  const segmentKeys = (urlParams.get("segment_keys") || urlParams.get("segment_key") || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  const travellerNamesFromUrl = (urlParams.get("travellerNames") || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
 
   let meals = [];
   // quantities is now keyed per traveller: { travellerIndex: { mealIndex: qty } }
@@ -397,10 +405,12 @@
     departure: urlParams.get("departure") || "",
     travellers: parseInt(urlParams.get("travellers"), 10) || 1
   };
-  bookingContext.travellerNames = parseTravellerNames(
-    urlParams.get("travellerNames"),
-    bookingContext.travellers
-  );
+  bookingContext.travellerNames = travellerNamesFromUrl.length
+    ? travellerNamesFromUrl
+    : parseTravellerNames(
+        urlParams.get("travellerNames"),
+        bookingContext.travellers
+      );
 
   // Initialize an empty quantities bucket per traveller
   bookingContext.travellerNames.forEach((_, idx) => {
@@ -704,7 +714,9 @@
       "||departure=" + orderData.departure +
       "||travellers=" + orderData.travellers +
       "||flight_segment_key=" + orderData.flight_segment_key +
+      "||segment_keys=" + (orderData.segment_keys || orderData.flight_segment_key || "") +
       "||selected_travellers=" + orderData.selected_travellers +
+      "||travellerNames=" + (orderData.travellerNames || bookingContext.travellerNames.join(",")) +
       "||selected_meals=" + mealsEncoded +
       "||capture_meal_selection=" + mealsEncoded +
       "||selected_meal=" + (orderData.selected_meal || mealsEncoded) +
@@ -755,8 +767,10 @@
       destination: bookingContext.destination,
       departure: bookingContext.departure,
       travellers: bookingContext.travellers,
-      flight_segment_key: urlParams.get("segment_key") || "",
+      flight_segment_key: urlParams.get("segment_key") || (segmentKeys[0] || ""),
+      segment_keys: segmentKeys.join(","),
       selected_travellers: urlParams.get("selected_travellers") || bookingContext.travellers,
+      travellerNames: bookingContext.travellerNames.join(","),
       meals: selectedMeals,
       selected_meal: selectedMeals.map(m => {
         if (m.ssrCode) {
