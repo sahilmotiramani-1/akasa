@@ -363,10 +363,6 @@
           <div class="flight-route" id="flightRoute">✈️ Loading flight...</div>
           <div class="flight-departure" id="flightDeparture"></div>
         </div>
-        <div class="traveller-select-wrap">
-          <div class="traveller-select-label">Selecting meal for</div>
-          <select id="travellerSelect" class="traveller-select" onchange="switchTraveller(this.value)"></select>
-        </div>
       </div>
       <div id="flightSelectorWrap" class="flight-selector-wrap"></div>
       <div id="travellerSelectionWrap" class="traveller-selection-wrap"></div>
@@ -417,13 +413,12 @@
     .filter(Boolean);
 
   let meals = [];
-  // quantities is now keyed per traveller: { travellerIndex: { mealIndex: qty } }
+  // quantities is keyed by flight and traveller: { flightKey: { travellerIndex: { mealIndex: qty } } }
   let quantities = {};
   let currentPage = 0;
   let flightOptions = [];
   let selectedFlightIndex = 0;
   let selectedFlightSegmentKey = urlParams.get("segment_key") || (segmentKeys[0] || "");
-  let selectedTravellerIndices = [];
   let currentTraveller = 0;
   const pageSize = 10;
   const MAX_QTY = 5;
@@ -492,13 +487,6 @@
     }
   }
 
-  // Initialize an empty quantities bucket per traveller
-  bookingContext.travellerNames.forEach((_, idx) => {
-    quantities[idx] = {};
-  });
-
-  selectedTravellerIndices = bookingContext.travellerNames.map((_, idx) => idx);
-
   function renderBookingContext() {
     const routeEl = document.getElementById("flightRoute");
     const departureEl = document.getElementById("flightDeparture");
@@ -513,22 +501,8 @@
       ? `Departs: ${bookingContext.departure}`
       : "";
 
-    populateTravellerSelect();
     renderFlightSelector();
     renderTravellerSelection();
-  }
-
-  function populateTravellerSelect() {
-    const selectEl = document.getElementById("travellerSelect");
-    selectEl.innerHTML = "";
-    bookingContext.travellerNames.forEach((name, idx) => {
-      const opt = document.createElement("option");
-      opt.value = idx;
-      const count = getTravellerItemCount(idx);
-      opt.textContent = count > 0 ? `${name} (${count})` : name;
-      if (idx === currentTraveller) opt.selected = true;
-      selectEl.appendChild(opt);
-    });
   }
 
   function switchTraveller(idx) {
@@ -579,6 +553,18 @@
     wrap.appendChild(select);
   }
 
+  function getCurrentFlightKey() {
+    const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
+    return selectedFlight.segment_key || selectedFlightSegmentKey || `flight-${selectedFlightIndex}`;
+  }
+
+  function getCurrentTravellerQuantities() {
+    const flightKey = getCurrentFlightKey();
+    if (!quantities[flightKey]) quantities[flightKey] = {};
+    if (!quantities[flightKey][currentTraveller]) quantities[flightKey][currentTraveller] = {};
+    return quantities[flightKey][currentTraveller];
+  }
+
   function renderTravellerSelection() {
     const wrap = document.getElementById("travellerSelectionWrap");
     if (!wrap) return;
@@ -586,35 +572,25 @@
     wrap.innerHTML = "";
     const label = document.createElement("div");
     label.className = "traveller-selection-label";
-    label.textContent = "Select travellers";
+    label.textContent = "Select traveller";
 
-    const chips = document.createElement("div");
-    chips.className = "traveller-chip-list";
+    const select = document.createElement("select");
+    select.className = "traveller-select";
+    select.onchange = () => {
+      switchTraveller(select.value);
+    };
 
     bookingContext.travellerNames.forEach((name, idx) => {
-      const chip = document.createElement("label");
-      chip.className = "traveller-chip";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = idx;
-      checkbox.checked = selectedTravellerIndices.includes(idx);
-      checkbox.onchange = () => {
-        if (checkbox.checked) {
-          if (!selectedTravellerIndices.includes(idx)) selectedTravellerIndices.push(idx);
-        } else {
-          selectedTravellerIndices = selectedTravellerIndices.filter(item => item !== idx);
-        }
-        renderTravellerSelection();
-      };
-
-      chip.appendChild(checkbox);
-      chip.appendChild(document.createTextNode(name));
-      chips.appendChild(chip);
+      const option = document.createElement("option");
+      option.value = idx;
+      const count = getTravellerItemCount(idx);
+      option.textContent = count > 0 ? `${name} (${count})` : name;
+      if (idx === currentTraveller) option.selected = true;
+      select.appendChild(option);
     });
 
     wrap.appendChild(label);
-    wrap.appendChild(chips);
+    wrap.appendChild(select);
   }
 
   // extract text
@@ -722,7 +698,7 @@
 
     const start = currentPage * pageSize;
     const pageItems = meals.slice(start, start + pageSize);
-    const travellerQty = quantities[currentTraveller] || (quantities[currentTraveller] = {});
+    const travellerQty = getCurrentTravellerQuantities();
 
     pageItems.forEach((meal, i) => {
       const index = start + i;
@@ -767,12 +743,12 @@
       container.appendChild(div);
     });
 
-    populateTravellerSelect();
+    renderTravellerSelection();
     updateTotal();
   }
 
   function increase(index) {
-    const travellerQty = quantities[currentTraveller] || (quantities[currentTraveller] = {});
+    const travellerQty = getCurrentTravellerQuantities();
     if (!travellerQty[index]) travellerQty[index] = 0;
     if (travellerQty[index] < MAX_QTY) {
       travellerQty[index]++;
@@ -781,39 +757,42 @@
   }
 
   function decrease(index) {
-    const travellerQty = quantities[currentTraveller] || (quantities[currentTraveller] = {});
+    const travellerQty = getCurrentTravellerQuantities();
     if (travellerQty[index] > 0) {
       travellerQty[index]--;
     }
     render();
   }
 
-  function getTravellerItemCount(travellerIdx) {
-    const travellerQty = quantities[travellerIdx] || {};
+  function getTravellerItemCount(travellerIdx, flightKey = getCurrentFlightKey()) {
+    const travellerQty = quantities[flightKey]?.[travellerIdx] || {};
     return Object.values(travellerQty).reduce((a, b) => a + b, 0);
   }
 
   function getTotalItems() {
+    const flightKey = getCurrentFlightKey();
     let total = 0;
-    Object.keys(quantities).forEach(t => {
-      total += getTravellerItemCount(t);
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      total += getTravellerItemCount(parseInt(t, 10), flightKey);
     });
     return total;
   }
 
   function getTotalMeals() {
+    const flightKey = getCurrentFlightKey();
     let count = 0;
-    Object.keys(quantities).forEach(t => {
-      const travellerQty = quantities[t] || {};
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerQty = quantities[flightKey][t] || {};
       count += Object.keys(travellerQty).filter(i => travellerQty[i] > 0).length;
     });
     return count;
   }
 
   function getTotalAmount() {
+    const flightKey = getCurrentFlightKey();
     let total = 0;
-    Object.keys(quantities).forEach(t => {
-      const travellerQty = quantities[t] || {};
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerQty = quantities[flightKey][t] || {};
       Object.keys(travellerQty).forEach(i => {
         if (travellerQty[i] > 0) {
           total += getPrice(meals[i]) * travellerQty[i];
@@ -902,15 +881,19 @@
 
   async function confirmOrder() {
     const selectedMeals = [];
-    const selectedTravellerValues = selectedTravellerIndices.length
-      ? selectedTravellerIndices.sort((a, b) => a - b).map(idx => idx + 1)
-      : [currentTraveller + 1];
+    const flightKey = getCurrentFlightKey();
+    const selectedTravellerValues = Object.keys(quantities[flightKey] || {})
+      .filter(t => getTravellerItemCount(parseInt(t, 10), flightKey) > 0)
+      .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+      .map(t => parseInt(t, 10) + 1);
 
-    Object.keys(quantities).forEach(t => {
+    if (!selectedTravellerValues.length) {
+      selectedTravellerValues.push(currentTraveller + 1);
+    }
+
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
       const travellerIdx = parseInt(t, 10);
-      if (!selectedTravellerIndices.includes(travellerIdx)) return;
-
-      const travellerQty = quantities[t] || {};
+      const travellerQty = quantities[flightKey][t] || {};
       const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
       Object.keys(travellerQty).forEach(i => {
         if (travellerQty[i] > 0) {
@@ -920,7 +903,8 @@
             name: meals[i].mealName,
             qty: travellerQty[i],
             price: getPrice(meals[i]),
-            ssrCode: meals[i].mealSsrCode || ""
+            ssrCode: meals[i].ssrCode || meals[i].mealSsrCode || "",
+            ssrKey: meals[i].ssrKey || ""
           });
         }
       });
