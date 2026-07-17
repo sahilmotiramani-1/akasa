@@ -531,7 +531,11 @@
       bookingContext.origin = selectedFlight.origin || bookingContext.origin;
       bookingContext.destination = selectedFlight.destination || bookingContext.destination;
       bookingContext.departure = selectedFlight.departure || bookingContext.departure;
-      selectedFlightSegmentKey = selectedFlight.segment_key || "";
+      const firstSegmentKey = (selectedFlight.segment_keys || selectedFlight.segment_key || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)[0] || "";
+      selectedFlightSegmentKey = selectedFlight.segment_key || firstSegmentKey || "";
       segmentKeys = (selectedFlight.segment_keys || selectedFlight.segment_key || "")
         .split(",")
         .map(s => s.trim())
@@ -553,9 +557,21 @@
     wrap.appendChild(select);
   }
 
+  function getFlightStorageKey(index = selectedFlightIndex) {
+    const flight = flightOptions[index] || flightOptions[0] || {};
+    const explicitKey = flight.segment_key || flight.flight_key || flight.id || "";
+    if (explicitKey) return explicitKey;
+
+    const fallbackParts = [flight.origin, flight.destination, flight.departure, index + 1]
+      .filter(Boolean)
+      .map(part => String(part).trim())
+      .join("-");
+
+    return fallbackParts || `flight-${index}`;
+  }
+
   function getCurrentFlightKey() {
-    const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
-    return selectedFlight.segment_key || selectedFlightSegmentKey || `flight-${selectedFlightIndex}`;
+    return getFlightStorageKey(selectedFlightIndex);
   }
 
   function getCurrentTravellerQuantities() {
