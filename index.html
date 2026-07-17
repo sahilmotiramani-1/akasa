@@ -87,6 +87,54 @@
     font-weight: 700;
   }
 
+  .flight-selector-wrap,
+  .traveller-selection-wrap {
+    margin-top: 10px;
+    background: white;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .flight-selector-label,
+  .traveller-selection-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #666;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .flight-select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+  }
+
+  .traveller-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .traveller-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border: 1px solid #ddd;
+    border-radius: 999px;
+    font-size: 12px;
+    color: #444;
+    background: #fafafa;
+  }
+
+  .traveller-chip input {
+    accent-color: #ff6a3d;
+  }
+
   .menu-container {
     margin-top: 15px;
     background: white;
@@ -320,6 +368,8 @@
           <select id="travellerSelect" class="traveller-select" onchange="switchTraveller(this.value)"></select>
         </div>
       </div>
+      <div id="flightSelectorWrap" class="flight-selector-wrap"></div>
+      <div id="travellerSelectionWrap" class="traveller-selection-wrap"></div>
     </div>
 
     <div id="menu" class="menu-container"></div>
@@ -357,7 +407,7 @@
   const qpBotApiKey = urlParams.get("qp_bot_api_key") || urlParams.get("qp-api-key") || "";
   const qpBotSource = urlParams.get("qp_bot_source") || urlParams.get("qp-bot-source") || DEFAULT_API_SOURCE;
   const passengerKeys = (urlParams.get("passengerKeys") || urlParams.get("passenger_keys") || urlParams.get("passenger_key") || "").split(",").map(s => s.trim()).filter(Boolean);
-  const segmentKeys = (urlParams.get("segment_keys") || urlParams.get("segment_key") || "")
+  let segmentKeys = (urlParams.get("segment_keys") || urlParams.get("segment_key") || "")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
@@ -370,6 +420,10 @@
   // quantities is now keyed per traveller: { travellerIndex: { mealIndex: qty } }
   let quantities = {};
   let currentPage = 0;
+  let flightOptions = [];
+  let selectedFlightIndex = 0;
+  let selectedFlightSegmentKey = urlParams.get("segment_key") || (segmentKeys[0] || "");
+  let selectedTravellerIndices = [];
   let currentTraveller = 0;
   const pageSize = 10;
   const MAX_QTY = 5;
@@ -412,15 +466,42 @@
         bookingContext.travellers
       );
 
+  try {
+    const parsedFlightOptions = JSON.parse(urlParams.get("flightOptions") || "[]");
+    if (Array.isArray(parsedFlightOptions) && parsedFlightOptions.length) {
+      flightOptions = parsedFlightOptions;
+    }
+  } catch (err) {
+    console.warn("Unable to parse flight options from URL", err);
+  }
+
+  if (!flightOptions.length && (bookingContext.origin || bookingContext.destination || bookingContext.departure)) {
+    flightOptions = [{
+      origin: bookingContext.origin,
+      destination: bookingContext.destination,
+      departure: bookingContext.departure,
+      segment_key: selectedFlightSegmentKey,
+      segment_keys: segmentKeys.join(",")
+    }];
+  }
+
+  if (flightOptions.length) {
+    const matchedIndex = flightOptions.findIndex(option => option.segment_key && option.segment_key === selectedFlightSegmentKey);
+    if (matchedIndex >= 0) {
+      selectedFlightIndex = matchedIndex;
+    }
+  }
+
   // Initialize an empty quantities bucket per traveller
   bookingContext.travellerNames.forEach((_, idx) => {
     quantities[idx] = {};
   });
 
+  selectedTravellerIndices = bookingContext.travellerNames.map((_, idx) => idx);
+
   function renderBookingContext() {
     const routeEl = document.getElementById("flightRoute");
     const departureEl = document.getElementById("flightDeparture");
-    const selectEl = document.getElementById("travellerSelect");
 
     if (bookingContext.origin && bookingContext.destination) {
       routeEl.textContent = `✈️ ${bookingContext.origin} → ${bookingContext.destination}`;
@@ -433,6 +514,8 @@
       : "";
 
     populateTravellerSelect();
+    renderFlightSelector();
+    renderTravellerSelection();
   }
 
   function populateTravellerSelect() {
@@ -451,6 +534,87 @@
   function switchTraveller(idx) {
     currentTraveller = parseInt(idx, 10) || 0;
     render();
+  }
+
+  function renderFlightSelector() {
+    const wrap = document.getElementById("flightSelectorWrap");
+    if (!wrap) return;
+
+    if (flightOptions.length <= 1) {
+      wrap.innerHTML = "";
+      return;
+    }
+
+    const label = document.createElement("div");
+    label.className = "flight-selector-label";
+    label.textContent = "Select flight";
+
+    const select = document.createElement("select");
+    select.className = "flight-select";
+    select.onchange = () => {
+      selectedFlightIndex = parseInt(select.value, 10) || 0;
+      const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
+      bookingContext.origin = selectedFlight.origin || bookingContext.origin;
+      bookingContext.destination = selectedFlight.destination || bookingContext.destination;
+      bookingContext.departure = selectedFlight.departure || bookingContext.departure;
+      selectedFlightSegmentKey = selectedFlight.segment_key || "";
+      segmentKeys = (selectedFlight.segment_keys || selectedFlight.segment_key || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+      renderBookingContext();
+      render();
+    };
+
+    flightOptions.forEach((option, idx) => {
+      const optionEl = document.createElement("option");
+      optionEl.value = idx;
+      optionEl.textContent = `${option.origin || ""} → ${option.destination || ""} • ${option.departure || ""}`.trim();
+      if (idx === selectedFlightIndex) optionEl.selected = true;
+      select.appendChild(optionEl);
+    });
+
+    wrap.innerHTML = "";
+    wrap.appendChild(label);
+    wrap.appendChild(select);
+  }
+
+  function renderTravellerSelection() {
+    const wrap = document.getElementById("travellerSelectionWrap");
+    if (!wrap) return;
+
+    wrap.innerHTML = "";
+    const label = document.createElement("div");
+    label.className = "traveller-selection-label";
+    label.textContent = "Select travellers";
+
+    const chips = document.createElement("div");
+    chips.className = "traveller-chip-list";
+
+    bookingContext.travellerNames.forEach((name, idx) => {
+      const chip = document.createElement("label");
+      chip.className = "traveller-chip";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = idx;
+      checkbox.checked = selectedTravellerIndices.includes(idx);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!selectedTravellerIndices.includes(idx)) selectedTravellerIndices.push(idx);
+        } else {
+          selectedTravellerIndices = selectedTravellerIndices.filter(item => item !== idx);
+        }
+        renderTravellerSelection();
+      };
+
+      chip.appendChild(checkbox);
+      chip.appendChild(document.createTextNode(name));
+      chips.appendChild(chip);
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(chips);
   }
 
   // extract text
@@ -699,7 +863,7 @@
     const mealsEncoded = orderData.meals
       .map(m => {
         if (m.ssrCode) {
-          return `${m.ssrCode}|${m.ssrKey || ""}|${m.price}`;
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
         }
         return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
       })
@@ -738,13 +902,21 @@
 
   async function confirmOrder() {
     const selectedMeals = [];
+    const selectedTravellerValues = selectedTravellerIndices.length
+      ? selectedTravellerIndices.sort((a, b) => a - b).map(idx => idx + 1)
+      : [currentTraveller + 1];
+
     Object.keys(quantities).forEach(t => {
+      const travellerIdx = parseInt(t, 10);
+      if (!selectedTravellerIndices.includes(travellerIdx)) return;
+
       const travellerQty = quantities[t] || {};
-      const travellerName = bookingContext.travellerNames[t] || `Traveller ${parseInt(t, 10) + 1}`;
+      const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
       Object.keys(travellerQty).forEach(i => {
         if (travellerQty[i] > 0) {
           selectedMeals.push({
             traveller: travellerName,
+            travellerIndex: travellerIdx,
             name: meals[i].mealName,
             qty: travellerQty[i],
             price: getPrice(meals[i]),
@@ -767,14 +939,14 @@
       destination: bookingContext.destination,
       departure: bookingContext.departure,
       travellers: bookingContext.travellers,
-      flight_segment_key: urlParams.get("segment_key") || (segmentKeys[0] || ""),
+      flight_segment_key: selectedFlightSegmentKey || (segmentKeys[0] || ""),
       segment_keys: segmentKeys.join(","),
-      selected_travellers: urlParams.get("selected_travellers") || bookingContext.travellers,
+      selected_travellers: selectedTravellerValues.join(","),
       travellerNames: bookingContext.travellerNames.join(","),
       meals: selectedMeals,
       selected_meal: selectedMeals.map(m => {
         if (m.ssrCode) {
-          return `${m.ssrCode}|${m.ssrKey || ""}|${m.price}`;
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
         }
         return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
       }).join(","),
