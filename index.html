@@ -668,28 +668,40 @@
     return url;
   }
 
+  function flattenSsrItems(obj) {
+    let items = [];
+
+    if (!obj || typeof obj !== "object") {
+      return items;
+    }
+
+    if (Array.isArray(obj)) {
+      obj.forEach(entry => {
+        items = items.concat(flattenSsrItems(entry));
+      });
+      return items;
+    }
+
+    if (obj.ssrCode) {
+      items.push(obj);
+      return items;
+    }
+
+    Object.values(obj).forEach(value => {
+      items = items.concat(flattenSsrItems(value));
+    });
+    return items;
+  }
+
   function parseSsrAvailabilityMeals(data) {
     const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
     const parsedMeals = [];
 
     journeySsrs.forEach(journey => {
-      const mealsGroup = journey?.meals || [];
       const journeyKey = journey?.journeyKey || "";
-      let mealItems = [];
+      const allItems = flattenSsrItems(journey);
 
-      if (Array.isArray(mealsGroup)) {
-        mealItems = mealsGroup;
-      } else if (mealsGroup && typeof mealsGroup === "object") {
-        Object.values(mealsGroup).forEach(category => {
-          if (Array.isArray(category)) {
-            mealItems = mealItems.concat(category);
-          } else if (category && typeof category === "object" && category.ssrCode) {
-            mealItems.push(category);
-          }
-        });
-      }
-
-      mealItems.forEach(item => {
+      allItems.forEach(item => {
         if (!item || !item.ssrCode) return;
 
         let passengerAvailability = [];
@@ -704,8 +716,6 @@
           availability = passengerAvailability[0] || {};
         }
 
-        if (passengerAvailability.length && !availability) return;
-
         const priceValue = availability.price ?? availability.amount ?? item.price ?? 0;
         const price = typeof priceValue === "number" ? priceValue : parseFloat(priceValue) || 0;
 
@@ -716,7 +726,7 @@
           mealName: item.ssrName || item.name || item.ssrCode,
           mealDescription: item.description || item.ssrName || item.name || "",
           mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
-          nutritionFacts: item.nutritionFacts || item.nutritionFacts || [],
+          nutritionFacts: item.nutritionFacts || [],
           beverageIncluded: item.beverageIncluded || false,
           price,
           mealTagInfo: [],
@@ -913,9 +923,12 @@
     let total = 0;
     Object.keys(quantities[flightKey] || {}).forEach(t => {
       const travellerQty = quantities[flightKey][t] || {};
-      Object.keys(travellerQty).forEach(i => {
-        if (travellerQty[i] > 0) {
-          total += getPrice(meals[i]) * travellerQty[i];
+      Object.keys(travellerQty).forEach(mealKey => {
+        if (travellerQty[mealKey] > 0) {
+          const meal = getMealsForFlightKey(flightKey).find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+          if (meal) {
+            total += getPrice(meal) * travellerQty[mealKey];
+          }
         }
       });
     });
