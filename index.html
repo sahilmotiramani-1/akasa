@@ -407,7 +407,7 @@
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
-  const travellerNamesFromUrl = (urlParams.get("travellerNames") || "")
+  const travellerNamesFromUrl = (urlParams.get("travellerNames") || urlParams.get("travelerNames") || "")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
@@ -445,6 +445,14 @@
     return names;
   }
 
+  const explicitTravellerCount = parseInt(urlParams.get("travellers"), 10);
+  const inferredTravellerCount = Math.max(
+    Number.isFinite(explicitTravellerCount) && explicitTravellerCount > 0 ? explicitTravellerCount : 0,
+    travellerNamesFromUrl.length,
+    passengerKeys.length,
+    1
+  );
+
   const bookingContext = {
     pnr: urlParams.get("pnr") || "",
     lastname: urlParams.get("lastname") || "",
@@ -452,12 +460,12 @@
     origin: urlParams.get("origin") || "",
     destination: urlParams.get("destination") || "",
     departure: urlParams.get("departure") || "",
-    travellers: parseInt(urlParams.get("travellers"), 10) || 1
+    travellers: inferredTravellerCount
   };
   bookingContext.travellerNames = travellerNamesFromUrl.length
     ? travellerNamesFromUrl
     : parseTravellerNames(
-        urlParams.get("travellerNames"),
+        urlParams.get("travellerNames") || urlParams.get("travelerNames"),
         bookingContext.travellers
       );
 
@@ -574,6 +582,26 @@
     return getFlightStorageKey(selectedFlightIndex);
   }
 
+  function getJourneyKeyForFlightKey(flightKey) {
+    const option = flightOptions.find((option, idx) => getFlightStorageKey(idx) === flightKey);
+    return option?.journeyKey || "";
+  }
+
+  function getMealsForFlightKey(flightKey) {
+    const journeyKey = getJourneyKeyForFlightKey(flightKey);
+    if (!journeyKey) {
+      return meals;
+    }
+    return meals.filter(meal => meal.journeyKey === journeyKey);
+  }
+
+  function getAllSegmentKeys() {
+    return flightOptions
+      .flatMap(option => (option.segment_keys || option.segment_key || "").split(","))
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
   function getCurrentTravellerQuantities() {
     const flightKey = getCurrentFlightKey();
     if (!quantities[flightKey]) quantities[flightKey] = {};
@@ -632,6 +660,7 @@
 
     journeySsrs.forEach(journey => {
       const mealsGroup = journey?.meals || {};
+      const journeyKey = journey?.journeyKey || "";
 
       Object.values(mealsGroup).forEach(category => {
         if (!Array.isArray(category)) return;
@@ -645,6 +674,7 @@
           parsedMeals.push({
             ssrCode: item.ssrCode,
             ssrKey: availability.ssrKey || "",
+            journeyKey,
             mealName: item.ssrName || item.ssrCode,
             mealDescription: item.description || item.ssrName || "",
             mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || "",
@@ -690,21 +720,28 @@
           headers: apiHeaders(),
           body: JSON.stringify(passengerKeys),
         });
-        const data = await res.json();
-        meals = parseSsrAvailabilityMeals(data);
-        if (meals.length) {
+
+        if (!res.ok) {
+          console.warn("SSR availability fetch failed with status", res.status);
+          meals = [];
           render();
           return;
         }
-        console.warn("SSR availability returned no meals, falling back to Storyblok.");
+
+        const data = await res.json();
+        meals = parseSsrAvailabilityMeals(data);
+        if (!meals.length) {
+          console.warn("SSR availability returned no meals.");
+        }
+
+        render();
+        return;
       } catch (err) {
-        console.warn("SSR availability fetch failed, falling back to Storyblok.", err);
+        console.warn("SSR availability fetch failed.", err);
       }
     }
 
-    const res = await fetch(STORYBLOK_API_URL);
-    const data = await res.json();
-    meals = data.story?.content?.body || [];
+    meals = [];
     render();
   }
 
@@ -712,13 +749,43 @@
     const container = document.getElementById("menu");
     container.innerHTML = "";
 
+    if (!meals.length) {
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">No meal options are available from the SSR API.</div>
+            <div class="meal-description">Please verify your booking and try again.</div>
+          </div>
+        </div>
+      `;
+      renderTravellerSelection();
+      updateTotal();
+      return;
+    }
+
+    const flightKey = getCurrentFlightKey();
+    const currentMeals = getMealsForFlightKey(flightKey);
+    if (!currentMeals.length) {
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">No meal options are available for this flight.</div>
+            <div class="meal-description">Please select another flight or verify your booking.</div>
+          </div>
+        </div>
+      `;
+      renderTravellerSelection();
+      updateTotal();
+      return;
+    }
+
     const start = currentPage * pageSize;
-    const pageItems = meals.slice(start, start + pageSize);
+    const pageItems = currentMeals.slice(start, start + pageSize);
     const travellerQty = getCurrentTravellerQuantities();
 
     pageItems.forEach((meal, i) => {
-      const index = start + i;
-      const qty = travellerQty[index] || 0;
+      const mealKey = meal.ssrKey || meal.ssrCode || meal.mealName || `${start + i}`;
+      const qty = travellerQty[mealKey] || 0;
       const price = getPrice(meal);
       const energy = getEnergy(meal);
       const beverageIncluded = meal.beverageIncluded;
@@ -750,9 +817,9 @@
         </div>
 
         <div class="qty-box">
-          <button class="qty-btn" onclick="decrease(${index})" ${qty === 0 ? 'disabled' : ''}>−</button>
+          <button class="qty-btn" onclick="decrease(${JSON.stringify(mealKey)})" ${qty === 0 ? 'disabled' : ''}>−</button>
           <div class="qty-count">${qty}</div>
-          <button class="qty-btn" onclick="increase(${index})" ${qty >= MAX_QTY ? 'disabled' : ''}>+</button>
+          <button class="qty-btn" onclick="increase(${JSON.stringify(mealKey)})" ${qty >= MAX_QTY ? 'disabled' : ''}>+</button>
         </div>
       `;
 
@@ -763,19 +830,19 @@
     updateTotal();
   }
 
-  function increase(index) {
+  function increase(mealKey) {
     const travellerQty = getCurrentTravellerQuantities();
-    if (!travellerQty[index]) travellerQty[index] = 0;
-    if (travellerQty[index] < MAX_QTY) {
-      travellerQty[index]++;
+    if (!travellerQty[mealKey]) travellerQty[mealKey] = 0;
+    if (travellerQty[mealKey] < MAX_QTY) {
+      travellerQty[mealKey]++;
     }
     render();
   }
 
-  function decrease(index) {
+  function decrease(mealKey) {
     const travellerQty = getCurrentTravellerQuantities();
-    if (travellerQty[index] > 0) {
-      travellerQty[index]--;
+    if (travellerQty[mealKey] > 0) {
+      travellerQty[mealKey]--;
     }
     render();
   }
@@ -895,36 +962,54 @@
     }
   }
 
-  async function confirmOrder() {
+  function getSelectedMealsAcrossFlights() {
     const selectedMeals = [];
-    const flightKey = getCurrentFlightKey();
-    const selectedTravellerValues = Object.keys(quantities[flightKey] || {})
-      .filter(t => getTravellerItemCount(parseInt(t, 10), flightKey) > 0)
-      .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-      .map(t => parseInt(t, 10) + 1);
+    Object.keys(quantities).forEach(flightKey => {
+      const flightMeals = getMealsForFlightKey(flightKey);
+      Object.keys(quantities[flightKey] || {}).forEach(t => {
+        const travellerIdx = parseInt(t, 10);
+        const travellerQty = quantities[flightKey][t] || {};
+        const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
 
-    if (!selectedTravellerValues.length) {
-      selectedTravellerValues.push(currentTraveller + 1);
-    }
+        Object.keys(travellerQty).forEach(mealKey => {
+          const qty = travellerQty[mealKey];
+          if (qty > 0) {
+            const meal = flightMeals.find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+            if (!meal) return;
+            selectedMeals.push({
+              traveller: travellerName,
+              travellerIndex: travellerIdx,
+              name: meal.mealName,
+              qty,
+              price: getPrice(meal),
+              ssrCode: meal.ssrCode || meal.mealSsrCode || "",
+              ssrKey: meal.ssrKey || ""
+            });
+          }
+        });
+      });
+    });
+    return selectedMeals;
+  }
 
-    Object.keys(quantities[flightKey] || {}).forEach(t => {
-      const travellerIdx = parseInt(t, 10);
-      const travellerQty = quantities[flightKey][t] || {};
-      const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
-      Object.keys(travellerQty).forEach(i => {
-        if (travellerQty[i] > 0) {
-          selectedMeals.push({
-            traveller: travellerName,
-            travellerIndex: travellerIdx,
-            name: meals[i].mealName,
-            qty: travellerQty[i],
-            price: getPrice(meals[i]),
-            ssrCode: meals[i].ssrCode || meals[i].mealSsrCode || "",
-            ssrKey: meals[i].ssrKey || ""
-          });
+  function getSelectedTravellerValues() {
+    const values = new Set();
+    Object.keys(quantities).forEach(flightKey => {
+      Object.keys(quantities[flightKey] || {}).forEach(t => {
+        if (getTravellerItemCount(parseInt(t, 10), flightKey) > 0) {
+          values.add(parseInt(t, 10) + 1);
         }
       });
     });
+    if (!values.size) {
+      values.add(currentTraveller + 1);
+    }
+    return Array.from(values).sort((a, b) => a - b);
+  }
+
+  async function confirmOrder() {
+    const selectedMeals = getSelectedMealsAcrossFlights();
+    const selectedTravellerValues = getSelectedTravellerValues();
 
     if (!selectedMeals.length) {
       alert("Select at least one item");
@@ -940,7 +1025,7 @@
       departure: bookingContext.departure,
       travellers: bookingContext.travellers,
       flight_segment_key: selectedFlightSegmentKey || (segmentKeys[0] || ""),
-      segment_keys: segmentKeys.join(","),
+      segment_keys: getAllSegmentKeys().join(","),
       selected_travellers: selectedTravellerValues.join(","),
       travellerNames: bookingContext.travellerNames.join(","),
       meals: selectedMeals,
@@ -950,8 +1035,8 @@
         }
         return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
       }).join(","),
-      totalItems: getTotalItems(),
-      totalAmount: getTotalAmount()
+      totalItems: selectedMeals.reduce((sum, item) => sum + item.qty, 0),
+      totalAmount: selectedMeals.reduce((sum, item) => sum + item.qty * item.price, 0)
     };
 
     document.getElementById("mainContent").style.display = "none";
