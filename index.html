@@ -489,9 +489,23 @@
   }
 
   if (flightOptions.length) {
+    if (!selectedFlightSegmentKey) {
+      selectedFlightSegmentKey = flightOptions[0].segment_key || (flightOptions[0].segment_keys || "").split(",").map(s => s.trim()).filter(Boolean)[0] || "";
+    }
+
     const matchedIndex = flightOptions.findIndex(option => option.segment_key && option.segment_key === selectedFlightSegmentKey);
     if (matchedIndex >= 0) {
       selectedFlightIndex = matchedIndex;
+    }
+
+    const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
+    bookingContext.origin = bookingContext.origin || selectedFlight.origin || "";
+    bookingContext.destination = bookingContext.destination || selectedFlight.destination || "";
+    bookingContext.departure = bookingContext.departure || selectedFlight.departure || "";
+
+    const firstSegmentKey = selectedFlight.segment_key || (selectedFlight.segment_keys || "").split(",").map(s => s.trim()).filter(Boolean)[0] || "";
+    if (!selectedFlightSegmentKey && firstSegmentKey) {
+      selectedFlightSegmentKey = firstSegmentKey;
     }
   }
 
