@@ -549,8 +549,7 @@
     select.className = "flight-select";
     select.onchange = () => {
       selectedFlightIndex = parseInt(select.value, 10) || 0;
-      const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
-      bookingContext.origin = selectedFlight.origin || bookingContext.origin;
+        currentPage = 0;
       bookingContext.destination = selectedFlight.destination || bookingContext.destination;
       bookingContext.departure = selectedFlight.departure || bookingContext.departure;
       const firstSegmentKey = (selectedFlight.segment_keys || selectedFlight.segment_key || "")
@@ -995,7 +994,8 @@
   }
 
   function nextPage() {
-    if ((currentPage + 1) * pageSize < meals.length) {
+    const currentMeals = getMealsForFlightKey(getCurrentFlightKey());
+    if ((currentPage + 1) * pageSize < currentMeals.length) {
       currentPage++;
       render();
     }
@@ -1061,6 +1061,7 @@
     const selectedMeals = [];
     Object.keys(quantities).forEach(flightKey => {
       const flightMeals = getMealsForFlightKey(flightKey);
+      const journeyKey = getJourneyKeyForFlightKey(flightKey);
       Object.keys(quantities[flightKey] || {}).forEach(t => {
         const travellerIdx = parseInt(t, 10);
         const travellerQty = quantities[flightKey][t] || {};
@@ -1074,6 +1075,7 @@
             selectedMeals.push({
               traveller: travellerName,
               travellerIndex: travellerIdx,
+              journeyKey,
               name: meal.mealName,
               qty,
               price: getPrice(meal),
@@ -1126,6 +1128,9 @@
       meals: selectedMeals,
       selected_meal: selectedMeals.map(m => {
         if (m.ssrCode) {
+          if (m.journeyKey) {
+            return `${m.journeyKey}|${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
+          }
           return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
         }
         return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
