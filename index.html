@@ -693,13 +693,36 @@
     return items;
   }
 
+  function isMealItem(item) {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    const name = String(item.ssrName || item.name || "").toLowerCase();
+    const code = String(item.ssrCode || "").toLowerCase();
+    const description = String(item.description || "").toLowerCase();
+
+    if (/bag|baggage|luggage|seat|insurance|extra|assurance/.test(name) || /bag|baggage|luggage/.test(code) || /bag|baggage|luggage/.test(description)) {
+      return false;
+    }
+
+    return Boolean(
+      item.mealPreference ||
+      item.imageUrl ||
+      item.mealThumbnailImage ||
+      item.nutritionFacts ||
+      item.beverageIncluded !== undefined ||
+      /meal|burger|biryani|pizza|chocolates|sandwich|wrap|box|platter/.test(name)
+    );
+  }
+
   function parseSsrAvailabilityMeals(data) {
     const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
     const parsedMeals = [];
 
     journeySsrs.forEach(journey => {
       const journeyKey = journey?.journeyKey || "";
-      const allItems = flattenSsrItems(journey);
+      const allItems = flattenSsrItems(journey).filter(isMealItem);
 
       allItems.forEach(item => {
         if (!item || !item.ssrCode) return;
@@ -863,13 +886,35 @@
           <div class="meal-price">₹${price}</div>
         </div>
 
-        <div class="qty-box">
-          <button class="qty-btn" onclick="decrease(${JSON.stringify(mealKey)})" ${qty === 0 ? 'disabled' : ''}>−</button>
-          <div class="qty-count">${qty}</div>
-          <button class="qty-btn" onclick="increase(${JSON.stringify(mealKey)})" ${qty >= MAX_QTY ? 'disabled' : ''}>+</button>
-        </div>
+        <div class="qty-box"></div>
       `;
 
+      const qtyBox = div.querySelector('.qty-box');
+      const decreaseBtn = document.createElement('button');
+      decreaseBtn.type = 'button';
+      decreaseBtn.className = 'qty-btn';
+      decreaseBtn.disabled = qty === 0;
+      decreaseBtn.textContent = '−';
+      decreaseBtn.addEventListener('click', () => {
+        decrease(mealKey);
+      });
+
+      const countEl = document.createElement('div');
+      countEl.className = 'qty-count';
+      countEl.textContent = qty;
+
+      const increaseBtn = document.createElement('button');
+      increaseBtn.type = 'button';
+      increaseBtn.className = 'qty-btn';
+      increaseBtn.disabled = qty >= MAX_QTY;
+      increaseBtn.textContent = '+';
+      increaseBtn.addEventListener('click', () => {
+        increase(mealKey);
+      });
+
+      qtyBox.appendChild(decreaseBtn);
+      qtyBox.appendChild(countEl);
+      qtyBox.appendChild(increaseBtn);
       container.appendChild(div);
     });
 
