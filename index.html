@@ -407,7 +407,7 @@
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
-  const travellerNamesFromUrl = (urlParams.get("travellerNames") || urlParams.get("travelerNames") || "")
+  const travellerNamesFromUrl = (urlParams.get("travellerNames") || "")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
@@ -445,14 +445,6 @@
     return names;
   }
 
-  const explicitTravellerCount = parseInt(urlParams.get("travellers"), 10);
-  const inferredTravellerCount = Math.max(
-    Number.isFinite(explicitTravellerCount) && explicitTravellerCount > 0 ? explicitTravellerCount : 0,
-    travellerNamesFromUrl.length,
-    passengerKeys.length,
-    1
-  );
-
   const bookingContext = {
     pnr: urlParams.get("pnr") || "",
     lastname: urlParams.get("lastname") || "",
@@ -460,12 +452,12 @@
     origin: urlParams.get("origin") || "",
     destination: urlParams.get("destination") || "",
     departure: urlParams.get("departure") || "",
-    travellers: inferredTravellerCount
+    travellers: parseInt(urlParams.get("travellers"), 10) || 1
   };
   bookingContext.travellerNames = travellerNamesFromUrl.length
     ? travellerNamesFromUrl
     : parseTravellerNames(
-        urlParams.get("travellerNames") || urlParams.get("travelerNames"),
+        urlParams.get("travellerNames"),
         bookingContext.travellers
       );
 
@@ -582,13 +574,6 @@
     return getFlightStorageKey(selectedFlightIndex);
   }
 
-  function getAllSegmentKeys() {
-    return flightOptions
-      .flatMap(option => (option.segment_keys || option.segment_key || "").split(","))
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
-
   function getCurrentTravellerQuantities() {
     const flightKey = getCurrentFlightKey();
     if (!quantities[flightKey]) quantities[flightKey] = {};
@@ -647,7 +632,6 @@
 
     journeySsrs.forEach(journey => {
       const mealsGroup = journey?.meals || {};
-      const journeyKey = journey?.journeyKey || "";
 
       Object.values(mealsGroup).forEach(category => {
         if (!Array.isArray(category)) return;
@@ -661,7 +645,6 @@
           parsedMeals.push({
             ssrCode: item.ssrCode,
             ssrKey: availability.ssrKey || "",
-            journeyKey,
             mealName: item.ssrName || item.ssrCode,
             mealDescription: item.description || item.ssrName || "",
             mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || "",
@@ -707,48 +690,27 @@
           headers: apiHeaders(),
           body: JSON.stringify(passengerKeys),
         });
-
-        if (!res.ok) {
-          console.warn("SSR availability fetch failed with status", res.status);
-          meals = [];
+        const data = await res.json();
+        meals = parseSsrAvailabilityMeals(data);
+        if (meals.length) {
           render();
           return;
         }
-
-        const data = await res.json();
-        meals = parseSsrAvailabilityMeals(data);
-        if (!meals.length) {
-          console.warn("SSR availability returned no meals.");
-        }
-
-        render();
-        return;
+        console.warn("SSR availability returned no meals, falling back to Storyblok.");
       } catch (err) {
-        console.warn("SSR availability fetch failed.", err);
+        console.warn("SSR availability fetch failed, falling back to Storyblok.", err);
       }
     }
 
-    meals = [];
+    const res = await fetch(STORYBLOK_API_URL);
+    const data = await res.json();
+    meals = data.story?.content?.body || [];
     render();
   }
 
   function render() {
     const container = document.getElementById("menu");
     container.innerHTML = "";
-
-    if (!meals.length) {
-      container.innerHTML = `
-        <div class="meal-item">
-          <div class="meal-left">
-            <div class="meal-name">No meal options are available from the SSR API.</div>
-            <div class="meal-description">Please verify your booking and try again.</div>
-          </div>
-        </div>
-      `;
-      renderTravellerSelection();
-      updateTotal();
-      return;
-    }
 
     const start = currentPage * pageSize;
     const pageItems = meals.slice(start, start + pageSize);
@@ -933,51 +895,36 @@
     }
   }
 
-  function getSelectedMealsAcrossFlights() {
+  async function confirmOrder() {
     const selectedMeals = [];
-    Object.keys(quantities).forEach(flightKey => {
-      Object.keys(quantities[flightKey] || {}).forEach(t => {
-        const travellerIdx = parseInt(t, 10);
-        const travellerQty = quantities[flightKey][t] || {};
-        const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
+    const flightKey = getCurrentFlightKey();
+    const selectedTravellerValues = Object.keys(quantities[flightKey] || {})
+      .filter(t => getTravellerItemCount(parseInt(t, 10), flightKey) > 0)
+      .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+      .map(t => parseInt(t, 10) + 1);
 
-        Object.keys(travellerQty).forEach(i => {
-          const qty = travellerQty[i];
-          if (qty > 0) {
-            selectedMeals.push({
-              traveller: travellerName,
-              travellerIndex: travellerIdx,
-              name: meals[i].mealName,
-              qty,
-              price: getPrice(meals[i]),
-              ssrCode: meals[i].ssrCode || meals[i].mealSsrCode || "",
-              ssrKey: meals[i].ssrKey || ""
-            });
-          }
-        });
-      });
-    });
-    return selectedMeals;
-  }
+    if (!selectedTravellerValues.length) {
+      selectedTravellerValues.push(currentTraveller + 1);
+    }
 
-  function getSelectedTravellerValues() {
-    const values = new Set();
-    Object.keys(quantities).forEach(flightKey => {
-      Object.keys(quantities[flightKey] || {}).forEach(t => {
-        if (getTravellerItemCount(parseInt(t, 10), flightKey) > 0) {
-          values.add(parseInt(t, 10) + 1);
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerIdx = parseInt(t, 10);
+      const travellerQty = quantities[flightKey][t] || {};
+      const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
+      Object.keys(travellerQty).forEach(i => {
+        if (travellerQty[i] > 0) {
+          selectedMeals.push({
+            traveller: travellerName,
+            travellerIndex: travellerIdx,
+            name: meals[i].mealName,
+            qty: travellerQty[i],
+            price: getPrice(meals[i]),
+            ssrCode: meals[i].ssrCode || meals[i].mealSsrCode || "",
+            ssrKey: meals[i].ssrKey || ""
+          });
         }
       });
     });
-    if (!values.size) {
-      values.add(currentTraveller + 1);
-    }
-    return Array.from(values).sort((a, b) => a - b);
-  }
-
-  async function confirmOrder() {
-    const selectedMeals = getSelectedMealsAcrossFlights();
-    const selectedTravellerValues = getSelectedTravellerValues();
 
     if (!selectedMeals.length) {
       alert("Select at least one item");
@@ -993,7 +940,7 @@
       departure: bookingContext.departure,
       travellers: bookingContext.travellers,
       flight_segment_key: selectedFlightSegmentKey || (segmentKeys[0] || ""),
-      segment_keys: getAllSegmentKeys().join(","),
+      segment_keys: segmentKeys.join(","),
       selected_travellers: selectedTravellerValues.join(","),
       travellerNames: bookingContext.travellerNames.join(","),
       meals: selectedMeals,
@@ -1003,8 +950,8 @@
         }
         return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
       }).join(","),
-      totalItems: selectedMeals.reduce((sum, item) => sum + item.qty, 0),
-      totalAmount: selectedMeals.reduce((sum, item) => sum + item.qty * item.price, 0)
+      totalItems: getTotalItems(),
+      totalAmount: getTotalAmount()
     };
 
     document.getElementById("mainContent").style.display = "none";
