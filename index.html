@@ -673,30 +673,53 @@
     const parsedMeals = [];
 
     journeySsrs.forEach(journey => {
-      const mealsGroup = journey?.meals || {};
+      const mealsGroup = journey?.meals || [];
       const journeyKey = journey?.journeyKey || "";
+      let mealItems = [];
 
-      Object.values(mealsGroup).forEach(category => {
-        if (!Array.isArray(category)) return;
+      if (Array.isArray(mealsGroup)) {
+        mealItems = mealsGroup;
+      } else if (mealsGroup && typeof mealsGroup === "object") {
+        Object.values(mealsGroup).forEach(category => {
+          if (Array.isArray(category)) {
+            mealItems = mealItems.concat(category);
+          } else if (category && typeof category === "object" && category.ssrCode) {
+            mealItems.push(category);
+          }
+        });
+      }
 
-        category.forEach(item => {
-          if (!item || !item.ssrCode) return;
-          const passengerAvailability = Array.isArray(item.passengerAvailability) ? item.passengerAvailability : [];
-          const availability = passengerAvailability.find(p => passengerKeys.length === 0 || passengerKeys.includes(p.passengerKey)) || passengerAvailability[0];
-          if (!availability) return;
+      mealItems.forEach(item => {
+        if (!item || !item.ssrCode) return;
 
-          parsedMeals.push({
-            ssrCode: item.ssrCode,
-            ssrKey: availability.ssrKey || "",
-            journeyKey,
-            mealName: item.ssrName || item.ssrCode,
-            mealDescription: item.description || item.ssrName || "",
-            mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || "",
-            nutritionFacts: item.nutritionFacts || [],
-            beverageIncluded: item.beverageIncluded || false,
-            price: typeof availability.price === "number" ? availability.price : parseFloat(availability.price) || 0,
-            mealTagInfo: [],
-          });
+        let passengerAvailability = [];
+        if (Array.isArray(item.passengerAvailability)) {
+          passengerAvailability = item.passengerAvailability;
+        } else if (item.passengerAvailability && typeof item.passengerAvailability === "object") {
+          passengerAvailability = [item.passengerAvailability];
+        }
+
+        let availability = passengerAvailability.find(p => passengerKeys.length === 0 || passengerKeys.includes(p.passengerKey));
+        if (!availability) {
+          availability = passengerAvailability[0] || {};
+        }
+
+        if (passengerAvailability.length && !availability) return;
+
+        const priceValue = availability.price ?? availability.amount ?? item.price ?? 0;
+        const price = typeof priceValue === "number" ? priceValue : parseFloat(priceValue) || 0;
+
+        parsedMeals.push({
+          ssrCode: item.ssrCode,
+          ssrKey: availability.ssrKey || item.ssrKey || "",
+          journeyKey,
+          mealName: item.ssrName || item.name || item.ssrCode,
+          mealDescription: item.description || item.ssrName || item.name || "",
+          mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
+          nutritionFacts: item.nutritionFacts || item.nutritionFacts || [],
+          beverageIncluded: item.beverageIncluded || false,
+          price,
+          mealTagInfo: [],
         });
       });
     });
