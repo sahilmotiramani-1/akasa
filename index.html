@@ -432,6 +432,16 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
   }
 
   // Storyblok contains the presentation/nutrition metadata used by the meal cards.
+  function apiHeaders() {
+    const headers = {
+      "Content-Type": "application/json",
+      "QP-BOT-SOURCE": qpBotSource
+    };
+    if (authToken) headers["Authorization"] = authToken;
+    if (qpBotApiKey) headers["QP-BOT-API-KEY"] = qpBotApiKey;
+    return headers;
+  }
+
   async function fetchStoryblokMeals() {
     try {
       const res = await fetch(STORYBLOK_API_URL);
@@ -694,7 +704,10 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
     }
 
     try {
-      const [ssrRes, metadata] = await Promise.all([
+      // Do not let Storyblok failure prevent the SSR meal list from rendering.
+      // Some WebView/proxy environments can return ERR_CONTENT_DECODING_FAILED for
+      // the Storyblok CDN response. Nutrition metadata is optional in that case.
+      const [ssrResult, storyResult] = await Promise.allSettled([
         fetch(SSR_AVAILABILITY_URL,{
           method:"POST",
           headers:apiHeaders(),
@@ -703,9 +716,18 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
         fetchStoryblokMeals()
       ]);
 
+      if (ssrResult.status !== "fulfilled") {
+        throw ssrResult.reason || new Error("SSR availability request failed");
+      }
+
+      const ssrRes = ssrResult.value;
       if (!ssrRes.ok) throw new Error(`SSR availability returned ${ssrRes.status}`);
 
       const data = await ssrRes.json();
+      const metadata = storyResult.status === "fulfilled" ? storyResult.value : {};
+      if (storyResult.status === "rejected") {
+        console.warn("Storyblok metadata unavailable; rendering SSR data only.", storyResult.reason);
+      }
       meals = mergeMealMetadata(parseSsrAvailabilityMeals(data), metadata);
 
       if (!meals.length) console.warn("SSR availability returned no meals.");
