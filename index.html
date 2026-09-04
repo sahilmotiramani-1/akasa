@@ -449,19 +449,8 @@ button,select,input{font:inherit}
   }
 
   function renderBookingContext() {
-    const routeEl = document.getElementById("flightRoute");
-    const departureEl = document.getElementById("flightDeparture");
-
-    if (bookingContext.origin && bookingContext.destination) {
-      routeEl.textContent = `✈️ ${bookingContext.origin} → ${bookingContext.destination}`;
-    } else {
-      routeEl.textContent = "✈️ Flight details unavailable";
-    }
-
-    departureEl.textContent = bookingContext.departure
-      ? `Departs: ${bookingContext.departure}`
-      : "";
-
+    // The flight card itself is now rendered by renderFlightSelector().
+    // Do not access flightRoute/flightDeparture before that card exists.
     renderFlightSelector();
     renderTravellerSelection();
   }
@@ -481,12 +470,21 @@ button,select,input{font:inherit}
 
     // No separate flight dropdown. The complete flight card is the dropdown.
     if (!Array.isArray(flightOptions) || !flightOptions.length) {
+      const fallbackRoute =
+        bookingContext.origin && bookingContext.destination
+          ? `${bookingContext.origin} → ${bookingContext.destination}`
+          : "Flight details unavailable";
+
+      const fallbackDeparture = bookingContext.departure
+        ? `Departs: ${bookingContext.departure}`
+        : "";
+
       wrap.innerHTML = `
-        <div class="compact-card flight-card">
+        <div class="flight-card-selector-inner">
           <div class="compact-icon">✈</div>
           <div class="compact-content">
-            <div class="compact-title" id="flightRoute">Flight details unavailable</div>
-            <div class="compact-subtitle" id="flightDeparture"></div>
+            <div class="compact-title">${escapeHtml(fallbackRoute)}</div>
+            <div class="compact-subtitle">${escapeHtml(fallbackDeparture)}</div>
           </div>
         </div>`;
       return;
@@ -520,13 +518,17 @@ button,select,input{font:inherit}
     content.appendChild(title);
     content.appendChild(subtitle);
 
+    const hasMultipleFlights = flightOptions.length > 1;
+
     const arrow = document.createElement("span");
     arrow.className = "flight-dropdown-arrow";
     arrow.textContent = "⌄";
+    arrow.style.display = hasMultipleFlights ? "" : "none";
 
     const select = document.createElement("select");
     select.className = "flight-overlay-select";
     select.setAttribute("aria-label", "Select flight");
+    select.disabled = !hasMultipleFlights;
 
     flightOptions.forEach((option, idx) => {
       const optionEl = document.createElement("option");
@@ -565,8 +567,12 @@ button,select,input{font:inherit}
 
     card.appendChild(icon);
     card.appendChild(content);
-    card.appendChild(arrow);
-    card.appendChild(select);
+
+    if (hasMultipleFlights) {
+      card.appendChild(arrow);
+      card.appendChild(select);
+    }
+
     wrap.appendChild(card);
   }
 
