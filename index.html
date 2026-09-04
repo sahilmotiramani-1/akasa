@@ -125,7 +125,15 @@ body{
 }
 .qty-btn:disabled{background:#ccc;cursor:not-allowed}
 .qty-count{min-width:18px;text-align:center;font-size:12px;font-weight:bold}
-.controls{display:none}
+.controls{
+  display:none;align-items:center;justify-content:space-between;gap:8px;
+  margin:2px 0 12px
+}
+.controls button{
+  flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:9px;
+  background:#fff;color:#333;font-size:11px;font-weight:700;cursor:pointer
+}
+.controls button:disabled{background:#eee;color:#aaa;cursor:not-allowed}
 .total-section{
   position:fixed;bottom:0;left:0;right:0;background:#fff;padding:9px 12px;
   box-shadow:0 -2px 10px rgba(0,0,0,.1);z-index:100
@@ -256,6 +264,13 @@ body{
     .filter(Boolean);
 
   let meals = [];
+  // Explicit loading state: an empty array must NOT mean "no meals" while SSR is still loading.
+  let mealsLoading = true;
+
+  // Meals are also indexed by the selected flight so multiple journeys never
+  // accidentally render another journey's meals.
+  let mealsByFlight = {};
+
   // quantities is keyed by flight and traveller: { flightKey: { travellerIndex: { mealIndex: qty } } }
   let quantities = {};
   let currentPage = 0;
@@ -336,7 +351,9 @@ body{
       selectedFlightSegmentKey = flightOptions[0].segment_key || (flightOptions[0].segment_keys || "").split(",").map(s => s.trim()).filter(Boolean)[0] || "";
     }
 
-    const matchedIndex = flightOptions.findIndex(option => option.segment_key && option.segment_key === selectedFlightSegmentKey);
+    const matchedIndex = flightOptions.findIndex(option =>
+      getFlightSegmentKeys(option).includes(selectedFlightSegmentKey)
+    );
     if (matchedIndex >= 0) {
       selectedFlightIndex = matchedIndex;
     }
@@ -410,6 +427,11 @@ body{
         .split(",")
         .map(s => s.trim())
         .filter(Boolean);
+
+      // Flight changed: reset only the UI page/filter position.
+      // Do NOT clear meals and do NOT call SSR again.
+      currentPage = 0;
+
       renderBookingContext();
       render();
     };
@@ -449,12 +471,47 @@ body{
     return option?.journeyKey || "";
   }
 
+  function getFlightSegmentKeys(flight) {
+    if (!flight || typeof flight !== "object") return [];
+
+    const raw = [
+      flight.segment_key,
+      flight.segmentKey,
+      flight.segment_keys,
+      flight.segmentKeys
+    ].filter(Boolean);
+
+    return raw
+      .flatMap(value => Array.isArray(value) ? value : String(value).split(","))
+      .map(value => String(value).trim())
+      .filter(Boolean);
+  }
+
+  function normalizeKey(value) {
+    return value == null ? "" : String(value).trim();
+  }
+
   function getMealsForFlightKey(flightKey) {
-    const journeyKey = getJourneyKeyForFlightKey(flightKey);
-    if (!journeyKey) {
+    // Primary source: meals explicitly assigned to this flight.
+    if (Object.prototype.hasOwnProperty.call(mealsByFlight, flightKey)) {
+      return mealsByFlight[flightKey] || [];
+    }
+
+    // Backward-compatible fallback for a single-flight booking.
+    if (flightOptions.length <= 1) {
       return meals;
     }
-    return meals.filter(meal => meal.journeyKey === journeyKey);
+
+    // Secondary fallback: journeyKey matching when it is supplied in flightOptions.
+    const journeyKey = getJourneyKeyForFlightKey(flightKey);
+    if (journeyKey) {
+      const journeyMeals = meals.filter(
+        meal => normalizeKey(meal.journeyKey) === normalizeKey(journeyKey)
+      );
+      if (journeyMeals.length) return journeyMeals;
+    }
+
+    return [];
   }
 
   function getAllSegmentKeys() {
@@ -564,6 +621,124 @@ body{
     );
   }
 
+  // Extract segment keys from an SSR journey without depending on one exact
+  // backend nesting shape (segmentKey, segment_key, segmentKeys, segment_keys).
+  function extractSegmentKeysFromJourney(journey) {
+    const found = new Set();
+
+    function walk(value) {
+      if (!value || typeof value !== "object") return;
+
+      if (Array.isArray(value)) {
+        value.forEach(walk);
+        return;
+      }
+
+      Object.entries(value).forEach(([key, child]) => {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        if (
+          normalizedKey === "segmentkey" ||
+          normalizedKey === "segmentkeys"
+        ) {
+          const values = Array.isArray(child) ? child : [child];
+          values.forEach(v => {
+            if (v && typeof v !== "object") {
+              String(v)
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean)
+                .forEach(v => found.add(v));
+            }
+          });
+        }
+
+        walk(child);
+      });
+    }
+
+    walk(journey);
+    return Array.from(found);
+  }
+
+  function mapMealsToFlights(data, parsedMeals) {
+    const journeys = data?.data?.ssrAvailability?.journeySsrs || [];
+    const map = {};
+
+    flightOptions.forEach((flight, index) => {
+      map[getFlightStorageKey(index)] = [];
+    });
+
+    if (!flightOptions.length) {
+      return map;
+    }
+
+    // One flight: there is no ambiguity, so all SSR meals belong to it.
+    if (flightOptions.length === 1) {
+      map[getFlightStorageKey(0)] = parsedMeals.slice();
+      return map;
+    }
+
+    // First try exact journeyKey supplied in flightOptions.
+    journeys.forEach((journey, journeyIndex) => {
+      const journeyKey = normalizeKey(journey?.journeyKey);
+      const journeyMeals = parsedMeals.filter(
+        meal => normalizeKey(meal.journeyKey) === journeyKey
+      );
+
+      if (!journeyMeals.length) return;
+
+      let matchedIndex = -1;
+
+      if (journeyKey) {
+        matchedIndex = flightOptions.findIndex(
+          flight => normalizeKey(flight.journeyKey) === journeyKey
+        );
+      }
+
+      // Then match the SSR journey's segment key(s) to flightOptions.
+      if (matchedIndex < 0) {
+        const journeySegmentKeys = extractSegmentKeysFromJourney(journey);
+
+        matchedIndex = flightOptions.findIndex(flight => {
+          const flightSegmentKeys = getFlightSegmentKeys(flight);
+          return journeySegmentKeys.some(key => flightSegmentKeys.includes(key));
+        });
+      }
+
+      // If backend returned the same number/order of journeys as flight options,
+      // use index as the final deterministic fallback.
+      if (matchedIndex < 0 && journeys.length === flightOptions.length) {
+        matchedIndex = journeyIndex;
+      }
+
+      if (matchedIndex >= 0) {
+        const flightKey = getFlightStorageKey(matchedIndex);
+        map[flightKey] = (map[flightKey] || []).concat(journeyMeals);
+      }
+    });
+
+    // Remove duplicate SSR entries while preserving order.
+    Object.keys(map).forEach(flightKey => {
+      const seen = new Set();
+      map[flightKey] = map[flightKey].filter(meal => {
+        const key = [
+          meal.journeyKey,
+          meal.ssrCode,
+          meal.ssrKey,
+          meal.mealName
+        ].join("|");
+
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+
+    console.log("SSR meals mapped by flight:", map);
+    return map;
+  }
+
   function parseSsrAvailabilityMeals(data) {
     const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
     const parsedMeals = [];
@@ -597,10 +772,10 @@ body{
           mealName: item.ssrName || item.name || item.ssrCode,
           mealDescription: item.description || item.ssrName || item.name || "",
           mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
-          nutritionFacts: item.nutritionFacts || [],
+          nutritionFacts: item.nutritionFacts || item.nutrition || [],
           beverageIncluded: item.beverageIncluded || false,
           price,
-          mealTagInfo: [],
+          mealTagInfo: item.mealTagInfo || item.mealTags || [],
         });
       });
     });
@@ -616,8 +791,34 @@ body{
   }
 
   function getEnergy(meal) {
-    const nutrition = meal.nutritionFacts && meal.nutritionFacts[0];
-    return nutrition ? nutrition.energy : "";
+    const nutrition = meal.nutritionFacts;
+
+    if (!nutrition) return "";
+
+    if (Array.isArray(nutrition)) {
+      const first = nutrition.find(Boolean);
+      if (!first) return "";
+
+      if (typeof first === "string" || typeof first === "number") {
+        return first;
+      }
+
+      return first.energy ??
+        first.energyValue ??
+        first.calories ??
+        first.calorie ??
+        "";
+    }
+
+    if (typeof nutrition === "object") {
+      return nutrition.energy ??
+        nutrition.energyValue ??
+        nutrition.calories ??
+        nutrition.calorie ??
+        "";
+    }
+
+    return "";
   }
 
   function apiHeaders() {
@@ -631,36 +832,54 @@ body{
   }
 
   async function fetchMeals() {
-    if (passengerKeys.length && authToken && qpBotApiKey) {
-      try {
-        const res = await fetch(SSR_AVAILABILITY_URL, {
-          method: "POST",
-          headers: apiHeaders(),
-          body: JSON.stringify(passengerKeys),
-        });
+    mealsLoading = true;
+    meals = [];
+    mealsByFlight = {};
+    currentPage = 0;
+    render();
 
-        if (!res.ok) {
-          console.warn("SSR availability fetch failed with status", res.status);
-          meals = [];
-          render();
-          return;
-        }
-
-        const data = await res.json();
-        meals = parseSsrAvailabilityMeals(data);
-        if (!meals.length) {
-          console.warn("SSR availability returned no meals.");
-        }
-
-        render();
-        return;
-      } catch (err) {
-        console.warn("SSR availability fetch failed.", err);
-      }
+    if (!(passengerKeys.length && authToken && qpBotApiKey)) {
+      console.warn("SSR availability request skipped: missing passengerKeys/authToken/qpBotApiKey.");
+      mealsLoading = false;
+      render();
+      return;
     }
 
-    meals = [];
-    render();
+    try {
+      const res = await fetch(SSR_AVAILABILITY_URL, {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify(passengerKeys),
+      });
+
+      if (!res.ok) {
+        console.warn("SSR availability fetch failed with status", res.status);
+        meals = [];
+        mealsByFlight = {};
+        mealsLoading = false;
+        render();
+        return;
+      }
+
+      const data = await res.json();
+
+      const parsedMeals = parseSsrAvailabilityMeals(data);
+      meals = parsedMeals;
+      mealsByFlight = mapMealsToFlights(data, parsedMeals);
+
+      if (!meals.length) {
+        console.warn("SSR availability returned no meals.", data);
+      }
+
+      mealsLoading = false;
+      render();
+    } catch (err) {
+      console.warn("SSR availability fetch failed.", err);
+      meals = [];
+      mealsByFlight = {};
+      mealsLoading = false;
+      render();
+    }
   }
 
 
@@ -751,7 +970,29 @@ body{
 
   function render() {
     const container = document.getElementById("menu");
+    if (!container) return;
+
     container.innerHTML = "";
+
+    // IMPORTANT:
+    // Empty meals while the API is still pending is NOT an empty result.
+    if (mealsLoading) {
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">Loading meals...</div>
+            <div class="meal-description">
+              Please wait while we fetch the available meals.
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderTravellerSelection();
+      renderPagination(0);
+      updateTotal();
+      return;
+    }
 
     if (!meals.length) {
       container.innerHTML = `
@@ -762,13 +1003,16 @@ body{
           </div>
         </div>
       `;
+
       renderTravellerSelection();
+      renderPagination(0);
       updateTotal();
       return;
     }
 
     const flightKey = getCurrentFlightKey();
     const currentMeals = getFilteredMeals(flightKey);
+
     if (!currentMeals.length) {
       container.innerHTML = `
         <div class="meal-item">
@@ -778,9 +1022,17 @@ body{
           </div>
         </div>
       `;
+
       renderTravellerSelection();
+      renderPagination(0);
       updateTotal();
       return;
+    }
+
+    const totalPages = Math.ceil(currentMeals.length / pageSize);
+
+    if (currentPage >= totalPages) {
+      currentPage = Math.max(0, totalPages - 1);
     }
 
     const start = currentPage * pageSize;
@@ -799,16 +1051,25 @@ body{
       div.className = "meal-item";
 
       let tagsHtml = "";
+
       if (meal.prebookLiner) {
         tagsHtml += `<span class="meal-tag" style="background:#FF9800;color:white;">${meal.prebookLiner}</span>`;
       }
+
       tags.forEach(tag => {
-        tagsHtml += `<span class="meal-tag" style="background:${tag.mealTagColorCode || '#666'};color:${tag.mealTagTextColor || 'white'};">${tag.mealTag}</span>`;
+        tagsHtml += `
+          <span class="meal-tag"
+            style="background:${tag.mealTagColorCode || '#666'};color:${tag.mealTagTextColor || 'white'};">
+            ${tag.mealTag}
+          </span>
+        `;
       });
 
       div.innerHTML = `
         <div class="meal-img-container">
-          <img class="meal-img" src="${getImage(meal)}" onerror="this.src='${FALLBACK_IMG}'"/>
+          <img class="meal-img"
+            src="${getImage(meal)}"
+            onerror="this.src='${FALLBACK_IMG}'"/>
           ${beverageIncluded ? '<span class="beverage-badge">🥤 Beverage Included</span>' : ''}
         </div>
 
@@ -816,33 +1077,34 @@ body{
           <div class="meal-name">${meal.mealName}</div>
           <div class="meal-description">${extractText(meal.mealDescription)}</div>
           ${tagsHtml ? `<div class="meal-tags">${tagsHtml}</div>` : ''}
-          ${energy ? `<div class="nutrition-info">⚡ Energy: ${energy}</div>` : ''}
+          ${energy !== "" ? `<div class="nutrition-info">⚡ Energy: ${energy}</div>` : ''}
           <div class="meal-price">₹${price}</div>
         </div>
 
         <div class="qty-box"></div>
       `;
 
-      const qtyBox = div.querySelector('.qty-box');
-      const decreaseBtn = document.createElement('button');
-      decreaseBtn.type = 'button';
-      decreaseBtn.className = 'qty-btn';
+      const qtyBox = div.querySelector(".qty-box");
+
+      const decreaseBtn = document.createElement("button");
+      decreaseBtn.type = "button";
+      decreaseBtn.className = "qty-btn";
       decreaseBtn.disabled = qty === 0;
-      decreaseBtn.textContent = '−';
-      decreaseBtn.addEventListener('click', () => {
+      decreaseBtn.textContent = "−";
+      decreaseBtn.addEventListener("click", () => {
         decrease(mealKey);
       });
 
-      const countEl = document.createElement('div');
-      countEl.className = 'qty-count';
+      const countEl = document.createElement("div");
+      countEl.className = "qty-count";
       countEl.textContent = qty;
 
-      const increaseBtn = document.createElement('button');
-      increaseBtn.type = 'button';
-      increaseBtn.className = 'qty-btn';
+      const increaseBtn = document.createElement("button");
+      increaseBtn.type = "button";
+      increaseBtn.className = "qty-btn";
       increaseBtn.disabled = qty >= MAX_QTY;
-      increaseBtn.textContent = '+';
-      increaseBtn.addEventListener('click', () => {
+      increaseBtn.textContent = "+";
+      increaseBtn.addEventListener("click", () => {
         increase(mealKey);
       });
 
@@ -853,7 +1115,25 @@ body{
     });
 
     renderTravellerSelection();
+    renderPagination(totalPages);
     updateTotal();
+  }
+
+  function renderPagination(totalPages) {
+    const controls = document.querySelector(".controls");
+    if (!controls) return;
+
+    const hasMultiplePages = totalPages > 1;
+    controls.style.display = hasMultiplePages ? "flex" : "none";
+
+    if (!hasMultiplePages) return;
+
+    const buttons = controls.querySelectorAll("button");
+    const prevBtn = buttons[0];
+    const nextBtn = buttons[1];
+
+    if (prevBtn) prevBtn.disabled = currentPage <= 0;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages - 1;
   }
 
   function increase(mealKey) {
@@ -929,7 +1209,8 @@ body{
   }
 
   function nextPage() {
-    if ((currentPage + 1) * pageSize < getFilteredMeals().length) {
+    const currentMeals = getFilteredMeals(getCurrentFlightKey());
+    if ((currentPage + 1) * pageSize < currentMeals.length) {
       currentPage++;
       render();
     }
