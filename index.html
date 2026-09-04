@@ -5,127 +5,100 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Meal Selection</title>
 <style>
-:root{--orange:#ff6500;--purple:#5b1fd1;--text:#292929;--muted:#666;--border:#e6e6e6}
+:root{--orange:#ff6b00;--purple:#5b1fd1;--text:#252525;--muted:#6b6b6b;--border:#e8e8e8;--bg:#fff}
 *{box-sizing:border-box}
-body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-family:Arial,Segoe UI,sans-serif}
+body{margin:0;padding:8px 9px 105px;background:var(--bg);font-family:Arial,Segoe UI,sans-serif;color:var(--text)}
+button,select,input{font:inherit}
 .header-title{display:none}
 
-/* Flight + passenger: one compact line */
-.booking-row{display:flex;gap:7px;align-items:center;width:100%;margin-bottom:10px}
-.flight-card-selector{flex:1 1 auto;min-width:0}
-.flight-card-selector-inner{
-  position:relative;width:100%;height:56px;padding:6px 29px 6px 9px;
-  display:flex;align-items:center;background:#fff;border:1.5px solid #9b4e16;
-  border-radius:14px;overflow:hidden;cursor:pointer
+/* Flight + passenger in one compact row. The flight card itself is the dropdown. */
+.booking-row{display:flex;align-items:center;gap:6px;width:100%;margin-bottom:10px}
+.flight-card-shell{position:relative;flex:1 1 auto;min-width:0}
+.flight-card{
+  position:relative;width:100%;height:56px;padding:6px 28px 6px 9px;
+  background:#fff;border:1.5px solid #9b4e16;border-radius:14px;
+  display:flex;align-items:center;overflow:hidden
 }
 .compact-icon{
   width:34px;height:34px;flex:0 0 34px;margin-right:8px;
-  border:1.5px solid #9b4e16;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;color:#9b4e16;font-size:15px;font-weight:700
+  border:1.5px solid #9b4e16;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:#9b4e16;font-size:15px;font-weight:700
 }
 .compact-content{min-width:0}
-.compact-title{font-size:13px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.compact-subtitle{font-size:9.5px;color:#777;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.flight-dropdown-arrow{position:absolute;right:9px;top:50%;transform:translateY(-55%);font-size:18px;pointer-events:none}
+.flight-route{font-size:13px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-departure{font-size:9.5px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flight-arrow{position:absolute;right:9px;top:50%;transform:translateY(-55%);font-size:18px;color:#333;pointer-events:none}
+.flight-selector-overlay{position:absolute;inset:0;z-index:2}
 .flight-overlay-select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .traveller-card{
-  flex:0 0 145px;height:56px;padding:5px 9px;border:1.5px solid #9b4e16;
-  border-radius:14px;background:#fff;display:flex;flex-direction:column;
-  justify-content:center;align-items:flex-start;min-width:0
+  flex:0 0 145px;height:56px;padding:5px 9px;
+  background:#fff;border:1.5px solid #9b4e16;border-radius:14px;
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-width:0
 }
-.traveller-select{
-  width:100%;height:22px;border:0;padding:0;outline:0;background:#fff;
-  font-size:11px;font-weight:700;color:#292929;white-space:nowrap
-}
-.traveller-selection-label{font-size:8.5px;color:#777;font-weight:600;margin-top:2px}
+.traveller-selection-label{font-size:8.5px;color:#777;font-weight:600;margin-top:2px;order:2}
+.traveller-select{width:100%;height:22px;border:0;padding:0;outline:0;background:#fff;color:#252525;font-size:11px;font-weight:700;order:1}
 
-/* Search + filters */
+/* Filters */
 .filter-toolbar{display:flex;align-items:center;gap:5px;width:100%;margin:0 0 10px;overflow-x:auto;scrollbar-width:none}
 .filter-toolbar::-webkit-scrollbar{display:none}
-.search-button{
-  width:48px;height:38px;flex:0 0 48px;border:0;border-radius:22px;
-  background:#f3f3f3;display:flex;align-items:center;justify-content:center;cursor:pointer
-}
+.search-button{width:45px;height:36px;flex:0 0 45px;border:0;border-radius:22px;background:#f3f3f3;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .search-button.active{background:#fff;border:1px solid var(--orange)}
-.search-button svg{width:23px;height:23px}
-.search-input-wrap{display:none;flex:0 0 170px}
-.search-input-wrap.show{display:block}
-.search-input{width:100%;height:38px;border:1px solid #ddd;border-radius:22px;padding:0 12px;font-size:11px;outline:none}
-.filter-pill{
-  height:38px;flex:0 0 auto;padding:0 14px;border:1px solid transparent;
-  border-radius:22px;background:#f3f3f3;color:#666;font-size:11px;font-weight:700;white-space:nowrap
-}
+.search-button svg{width:22px;height:22px}
+.search-input-wrap{display:none;flex:0 0 165px}.search-input-wrap.show{display:block}
+.search-input{width:100%;height:36px;border:1px solid #ddd;border-radius:22px;padding:0 12px;font-size:11px;outline:none}
+.filter-pill{height:36px;flex:0 0 auto;padding:0 12px;border:1px solid transparent;border-radius:22px;background:#f3f3f3;color:#666;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer}
 .filter-pill.active{background:#fff;border-color:var(--orange);color:#222}
-.veg-filter{margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto;font-size:11px;white-space:nowrap}
-.veg-toggle{width:39px;height:24px;border:0;border-radius:14px;background:#ddd;position:relative;cursor:pointer}
-.veg-toggle:after{content:"";position:absolute;left:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:.2s}
+.veg-filter{margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto;font-size:10px;white-space:nowrap}
+.veg-toggle{width:38px;height:23px;border:0;border-radius:14px;background:#ddd;position:relative;cursor:pointer}
+.veg-toggle:after{content:"";position:absolute;left:2px;top:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:.2s}
 .veg-toggle.on{background:var(--orange)}.veg-toggle.on:after{transform:translateX(15px)}
 
-.meal-info{margin:0 3px 12px}
-.meal-info p{margin:0 0 6px;font-size:11px;line-height:1.35;color:#444}
+.meal-info{margin:0 3px 11px}
+.meal-info p{margin:0 0 6px;font-size:10px;line-height:1.35;color:#444}
 
-/* Keep existing meal/nutrition functionality, optimize cards for chat */
-.menu-container{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.meal-item,.meal-card{
-  position:relative;background:#fff;border:1px solid var(--border);border-radius:11px;
-  box-shadow:0 1px 5px #0000000a;overflow:hidden
-}
-.meal-item{display:flex;gap:9px;padding:9px;min-height:170px}
-.meal-img-container{position:relative;flex:0 0 105px}
-.meal-img{width:105px;height:120px;object-fit:cover;border-radius:7px;display:block}
-.meal-left{min-width:0;flex:1}
-.meal-name{font-size:12px;font-weight:700;line-height:1.2;margin-bottom:4px}
-.meal-description{font-size:10px;color:#555;line-height:1.3;margin-bottom:5px}
-.meal-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
-.meal-tag{font-size:7.5px;padding:2px 5px;border-radius:4px}
-.nutrition-info{font-size:9px;color:#555;margin-top:4px}
-.meal-price{font-size:12px;font-weight:700;color:var(--orange);margin-top:5px}
-.qty-box{display:flex;align-items:center;gap:4px;margin-top:6px}
-.qty-btn{width:25px;height:25px;border:0;border-radius:6px;background:var(--orange);color:#fff;font-weight:700}
-.qty-btn:disabled{background:#ccc}
-.qty-count{min-width:15px;text-align:center;font-size:11px;font-weight:700}
+.menu-container{display:grid;grid-template-columns:1fr;gap:9px}
+.meal-card{background:#fff;border:1px solid var(--border);border-radius:11px;overflow:hidden;padding:9px;box-shadow:0 1px 5px rgba(0,0,0,.04)}
+.meal-main{display:grid;grid-template-columns:105px 1fr;gap:10px}
+.meal-img-container{position:relative}.meal-img{display:block;width:105px;height:120px;object-fit:cover;border-radius:8px}
+.food-type{position:absolute;top:6px;right:6px;width:18px;height:18px;border:1.5px solid currentColor;background:#fff;display:grid;place-items:center}
+.food-type.veg{color:#168344}.food-type.nonveg{color:#d6402e}
+.food-type.veg:after{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.food-type.nonveg:after{content:"";width:7px;height:7px;background:currentColor;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.beverage-badge{position:absolute;bottom:0;left:0;right:0;padding:4px;text-align:center;background:var(--purple);color:#fff;font-size:9px;font-weight:700;border-radius:0 0 8px 8px}
+.meal-content{min-width:0;display:flex;flex-direction:column}
+.meal-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px}.meal-tag{padding:3px 6px;border-radius:4px;background:var(--orange);color:#fff;font-size:8px;font-weight:700}
+.meal-name{font-size:13px;font-weight:700;margin:0 0 5px;line-height:1.2}.meal-description{font-size:10.5px;line-height:1.35;color:#555;margin-bottom:6px}
+.meal-meta{font-size:10px;color:#555;margin-bottom:4px}.allergens{font-size:9px;color:#666;line-height:1.3}
+.meal-footer{margin-top:auto;display:flex;justify-content:flex-end;align-items:center;gap:7px;padding-top:7px}
+.add-btn,.qty-btn,.confirm-btn,.controls button{border:0;background:var(--orange);color:#fff;font-weight:700;cursor:pointer}
+.add-btn{padding:7px 10px;border-radius:7px;font-size:10px}.qty-box{display:flex;align-items:center;gap:5px}
+.qty-btn{width:27px;height:27px;border-radius:7px;font-size:17px}.qty-btn:disabled,.add-btn:disabled{background:#ccc;cursor:not-allowed}.qty-count{min-width:17px;text-align:center;font-size:12px;font-weight:700}
 
-/* Nutrition dropdown preserved */
-.nutrition-toggle{
-  width:100%;margin-top:7px;padding:7px 0;border:0;border-top:1px solid var(--border);
-  background:#fff;color:var(--purple);text-align:left;font-size:10px;font-weight:700;cursor:pointer
-}
-.nutrition-panel{border:1px solid #ffd9c4;border-radius:8px;padding:7px;margin-top:5px;background:#fff}
-.nutrition-title{font-size:12px;font-weight:700;margin-bottom:6px}
-.nutrition-head,.nutrition-row{display:grid;grid-template-columns:1.5fr 1fr .7fr;gap:5px;align-items:center}
-.nutrition-head{padding:5px 0;border-top:2px solid var(--orange);border-bottom:1px solid #ffd9c4;font-size:8px;font-weight:700}
-.nutrition-row{padding:5px 0;border-bottom:1px solid #f0d9cd;font-size:8px}
-.nutrition-row:last-child{border-bottom:0}
-.nutrition-value{font-weight:700}.nutrition-note{font-size:7.5px;color:#777;margin-top:6px}
+/* ORIGINAL nutrition dropdown kept */
+.nutrition-toggle{margin-top:7px;width:100%;padding:7px 0;border:0;border-top:1px solid var(--border);background:#fff;color:#5b1fd1;text-align:left;font-size:10px;font-weight:700;cursor:pointer}
+.nutrition-panel{border:1px solid #ffd9c4;border-radius:9px;padding:8px;margin-top:5px;background:#fff}
+.nutrition-title{font-size:13px;font-weight:700;margin-bottom:7px}
+.nutrition-head,.nutrition-row{display:grid;grid-template-columns:1.5fr 1fr .7fr;gap:6px;align-items:center}
+.nutrition-head{padding:6px 0;border-top:2px solid var(--orange);border-bottom:1px solid #ffd9c4;font-size:9px;font-weight:700;color:#555}
+.nutrition-row{padding:6px 0;border-bottom:1px solid #f0d9cd;font-size:9px}.nutrition-row:last-child{border-bottom:0}
+.nutrition-value{font-weight:700}.nutrition-rda{text-align:left}.nutrition-note{font-size:8px;color:#777;margin-top:7px;line-height:1.35}
 
 .controls{display:none}
-.total-section{position:fixed;left:0;right:0;bottom:0;background:#fff;padding:8px 12px;box-shadow:0 -3px 12px #0002;z-index:20}
+.total-section{position:fixed;left:0;right:0;bottom:0;background:#fff;padding:8px 12px;box-shadow:0 -3px 12px rgba(0,0,0,.12);z-index:20}
 .total-details{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
 .total-items{font-size:10px;color:#666}.total-amount{font-size:15px;font-weight:700}
-.confirm-btn{width:100%;padding:10px;border:0;border-radius:9px;background:var(--orange);color:#fff;font-size:13px;font-weight:700}
-.confirm-btn:disabled{background:#ccc}
-.body-padding{height:0}
+.confirm-btn{width:100%;padding:10px;border-radius:9px;font-size:13px}.confirm-btn:disabled{background:#ccc;cursor:not-allowed}
+.body-padding{height:0}.empty{grid-column:1/-1;padding:24px;text-align:center;background:#fff;border-radius:12px;color:#666}
+.success-screen{display:none;position:fixed;inset:0;background:#fff;z-index:50;align-items:center;justify-content:center;flex-direction:column}.success-icon{font-size:50px}
 
-@media(max-width:700px){
-  body{padding:7px 8px 104px}
-  .booking-row{gap:5px}
-  .flight-card-selector-inner,.traveller-card{height:50px}
-  .flight-card-selector-inner{padding:5px 26px 5px 7px;border-radius:12px}
-  .compact-icon{width:29px;height:29px;flex-basis:29px;margin-right:6px;font-size:13px}
-  .compact-title{font-size:11px}.compact-subtitle{font-size:8px;margin-top:2px}
-  .traveller-card{flex-basis:128px;padding:5px 7px;border-radius:12px}
-  .traveller-select{font-size:10px;height:19px}.traveller-selection-label{font-size:8px}
-  .filter-toolbar{margin-bottom:8px}
-  .search-button{width:44px;height:36px;flex-basis:44px}
-  .filter-pill{height:36px;padding:0 11px;font-size:10px}
-  .veg-filter{font-size:10px}
-  .meal-info p{font-size:10px}
-  .menu-container{grid-template-columns:1fr}
-}
 @media(max-width:430px){
-  .traveller-card{flex-basis:115px}
-  .meal-item{min-height:155px}
-  .meal-img-container{flex-basis:90px}.meal-img{width:90px;height:105px}
+  .booking-row{gap:4px}
+  .flight-card{height:50px;padding:5px 25px 5px 7px;border-radius:12px}
+  .compact-icon{width:29px;height:29px;flex-basis:29px;margin-right:6px;font-size:13px}
+  .flight-route{font-size:11px}.flight-departure{font-size:8px}
+  .traveller-card{height:50px;flex-basis:115px;padding:5px 7px;border-radius:12px}
+  .traveller-select{font-size:10px;height:19px}.traveller-selection-label{font-size:8px}
 }
 </style>
 </head>
@@ -134,7 +107,18 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
   <div class="header-title">MEAL SELECTION</div>
 
   <section class="booking-row">
-    <div id="flightSelectorWrap" class="flight-card-selector"></div>
+    <div class="flight-card-shell">
+      <div class="flight-card">
+        <div class="compact-icon">✈</div>
+        <div class="compact-content">
+          <div class="flight-route" id="flightRoute">✈️ Loading flight...</div>
+          <div class="flight-departure" id="flightDeparture"></div>
+        </div>
+        <span class="flight-arrow" id="flightArrow">⌄</span>
+      </div>
+      <div id="flightSelectorWrap" class="flight-selector-overlay"></div>
+    </div>
+
     <div id="travellerSelectionWrap" class="compact-card traveller-card"></div>
   </section>
 
@@ -331,97 +315,69 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
 
   function renderFlightSelector() {
     const wrap = document.getElementById("flightSelectorWrap");
+    const arrow = document.getElementById("flightArrow");
     if (!wrap) return;
 
     wrap.innerHTML = "";
 
-    const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
-    const hasMultipleFlights = flightOptions.length > 1;
-
-    const card = document.createElement("div");
-    card.className = "flight-card-selector-inner";
-
-    const icon = document.createElement("div");
-    icon.className = "compact-icon";
-    icon.textContent = "✈";
-
-    const content = document.createElement("div");
-    content.className = "compact-content";
-
-    // Keep these IDs because renderBookingContext() updates them.
-    const route = document.createElement("div");
-    route.className = "compact-title";
-    route.id = "flightRoute";
-    route.textContent =
-      selectedFlight.origin && selectedFlight.destination
-        ? `${selectedFlight.origin} → ${selectedFlight.destination}`
-        : (bookingContext.origin && bookingContext.destination
-            ? `${bookingContext.origin} → ${bookingContext.destination}`
-            : "Flight");
-
-    const departure = document.createElement("div");
-    departure.className = "compact-subtitle";
-    departure.id = "flightDeparture";
-    departure.textContent = selectedFlight.departure
-      ? `Departs: ${selectedFlight.departure}`
-      : (bookingContext.departure ? `Departs: ${bookingContext.departure}` : "");
-
-    content.appendChild(route);
-    content.appendChild(departure);
-    card.appendChild(icon);
-    card.appendChild(content);
-
-    if (hasMultipleFlights) {
-      const arrow = document.createElement("span");
-      arrow.className = "flight-dropdown-arrow";
-      arrow.textContent = "⌄";
-      card.appendChild(arrow);
-
-      const select = document.createElement("select");
-      select.className = "flight-overlay-select";
-      select.setAttribute("aria-label", "Select flight");
-
-      flightOptions.forEach((option, idx) => {
-        const optionEl = document.createElement("option");
-        optionEl.value = String(idx);
-        optionEl.textContent =
-          `${option.origin || ""} → ${option.destination || ""}` +
-          `${option.departure ? ` • ${option.departure}` : ""}`.trim();
-        if (idx === selectedFlightIndex) optionEl.selected = true;
-        select.appendChild(optionEl);
-      });
-
-      // IMPORTANT: retain the original flight state transition.
-      select.onchange = () => {
-        selectedFlightIndex = parseInt(select.value, 10) || 0;
-        const selected = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
-
-        bookingContext.origin = selected.origin || bookingContext.origin;
-        bookingContext.destination = selected.destination || bookingContext.destination;
-        bookingContext.departure = selected.departure || bookingContext.departure;
-
-        const firstSegmentKey =
-          (selected.segment_keys || selected.segment_key || "")
-            .split(",")
-            .map(s => s.trim())
-            .filter(Boolean)[0] || "";
-
-        selectedFlightSegmentKey = selected.segment_key || firstSegmentKey || "";
-        segmentKeys =
-          (selected.segment_keys || selected.segment_key || "")
-            .split(",")
-            .map(s => s.trim())
-            .filter(Boolean);
-
-        // Do not replace or reset the flight-scoped quantity state.
-        renderBookingContext();
-        render();
-      };
-
-      card.appendChild(select);
+    // Preserve the original behavior: no selector for a single flight.
+    if (flightOptions.length <= 1) {
+      if (arrow) arrow.style.display = "none";
+      return;
     }
 
-    wrap.appendChild(card);
+    if (arrow) arrow.style.display = "";
+
+    const select = document.createElement("select");
+    select.className = "flight-overlay-select";
+    select.setAttribute("aria-label", "Select flight");
+
+    flightOptions.forEach((option, idx) => {
+      const optionEl = document.createElement("option");
+      optionEl.value = idx;
+      optionEl.textContent =
+        `${option.origin || ""} → ${option.destination || ""} • ${option.departure || ""}`.trim();
+      if (idx === selectedFlightIndex) optionEl.selected = true;
+      select.appendChild(optionEl);
+    });
+
+    // This is the ORIGINAL state transition. Do not reset quantities here.
+    select.onchange = () => {
+      selectedFlightIndex = parseInt(select.value, 10) || 0;
+
+      const selectedFlight =
+        flightOptions[selectedFlightIndex] || flightOptions[0] || {};
+
+      bookingContext.origin =
+        selectedFlight.origin || bookingContext.origin;
+      bookingContext.destination =
+        selectedFlight.destination || bookingContext.destination;
+      bookingContext.departure =
+        selectedFlight.departure || bookingContext.departure;
+
+      const firstSegmentKey =
+        (selectedFlight.segment_keys || selectedFlight.segment_key || "")
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean)[0] || "";
+
+      selectedFlightSegmentKey =
+        selectedFlight.segment_key || firstSegmentKey || "";
+
+      segmentKeys =
+        (selectedFlight.segment_keys || selectedFlight.segment_key || "")
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean);
+
+      // Flight change only changes the active flight. The original
+      // quantities[flightKey][traveller] state remains untouched.
+      currentPage = 0;
+      renderBookingContext();
+      render();
+    };
+
+    wrap.appendChild(select);
   }
 
   function getFlightStorageKey(index = selectedFlightIndex) {
@@ -475,7 +431,7 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
     wrap.innerHTML = "";
     const label = document.createElement("div");
     label.className = "traveller-selection-label";
-    label.textContent = "Select traveller";
+    label.textContent = "Select your meal";
 
     const select = document.createElement("select");
     select.className = "traveller-select";
@@ -687,7 +643,7 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
   let activeMealCategory = "all";
   let onlyVeg = false;
 
-  function mealText(meal) {
+  function mealFilterText(meal) {
     return [
       meal.mealName, meal.mealDescription, meal.mealPreference,
       meal.mealType, meal.prebookLiner, meal.calorieAndGramLiner,
@@ -695,38 +651,38 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
     ].join(" ").toLowerCase();
   }
 
-  function mealMatchesCategory(meal, category) {
+  function matchesMealCategory(meal, category) {
     if (category === "all") return true;
-    const text = mealText(meal);
+    const text = mealFilterText(meal);
     const rules = {
-      gourmet:/gourmet|premium|special/,
-      kids:/kid|child/,
-      desserts:/dessert|cake|brownie|sweet|chocolate|cookie|ice.?cream/,
-      refreshments:/refreshment|snack|tea|coffee|juice/,
-      ready:/ready.?to.?eat|wrap|sandwich|meal.?box/,
-      salads:/salad/,
-      beverages:/beverage|drink|juice|water|coffee|tea/
+      gourmet: /gourmet|premium|special/,
+      kids: /kid|child/,
+      desserts: /dessert|cake|brownie|sweet|chocolate|cookie|ice.?cream/,
+      refreshments: /refreshment|snack|tea|coffee|juice/,
+      ready: /ready.?to.?eat|wrap|sandwich|meal.?box/,
+      salads: /salad/,
+      beverages: /beverage|drink|juice|water|coffee|tea/
     };
     return rules[category]?.test(text) ?? true;
   }
 
-  function mealIsVeg(meal) {
-    const text = mealText(meal);
+  function isVegMeal(meal) {
+    const text = mealFilterText(meal);
     if (/\bnon.?veg\b|\bchicken\b|\bmutton\b|\bfish\b|\begg\b|\bmeat\b|\bseafood\b/.test(text)) return false;
     return /\bveg\b|\bvegetarian\b|\bvegan\b|\bpaneer\b|\bdal\b|\bsalad\b|\bfruit\b/.test(text);
   }
 
-  function getFilteredMeals(flightKey = getCurrentFlightKey()) {
+  function getVisibleMealsForCurrentFlight() {
+    // NEVER read the global meals array directly here.
+    // First scope by the currently selected flight/journey.
+    const flightMeals = getMealsForFlightKey(getCurrentFlightKey());
     const search = (document.getElementById("mealSearch")?.value || "").trim().toLowerCase();
 
-    // CRITICAL: start from the original flight-scoped meal list.
-    // This guarantees Flight A only sees Flight A's journey meals and Flight B
-    // only sees Flight B's journey meals.
-    return getMealsForFlightKey(flightKey).filter(meal => {
-      const text = mealText(meal);
+    return flightMeals.filter(meal => {
+      const text = mealFilterText(meal);
       return (!search || text.includes(search)) &&
-             mealMatchesCategory(meal, activeMealCategory) &&
-             (!onlyVeg || mealIsVeg(meal));
+             matchesMealCategory(meal, activeMealCategory) &&
+             (!onlyVeg || isVegMeal(meal));
     });
   }
 
@@ -773,7 +729,7 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
     }
 
     const flightKey = getCurrentFlightKey();
-    const currentMeals = getFilteredMeals(flightKey);
+    const currentMeals = getVisibleMealsForCurrentFlight();
 
     if (!currentMeals.length) {
       container.innerHTML = `<div class="empty"><strong>No meal options are available for this flight.</strong><br>Please select another flight or verify your booking.</div>`;
@@ -844,7 +800,7 @@ body{margin:0;padding:8px 10px 105px;background:#fff;color:var(--text);font-fami
   }
 
   function updatePagination() {
-    const currentMeals = getFilteredMeals(getCurrentFlightKey());
+    const currentMeals = getVisibleMealsForCurrentFlight();
     const pages = Math.max(1, Math.ceil(currentMeals.length / pageSize));
     document.getElementById("pageInfo").textContent = `Page ${currentPage + 1} of ${pages}`;
     document.getElementById("prevBtn").disabled = currentPage === 0;
