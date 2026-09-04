@@ -1,886 +1,1366 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Akasa Air - Seat Selection</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; }
-  /* Hide Skip controls if injected by the host/webview */
-  button.skip, #skip, #skip-btn, .skip-btn, [data-action="skip"] { display: none !important; }
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <title>Meal Selection</title>
 
-  /* ── FLIGHT SEGMENT TABS — very top, full width ── */
-  .flight-tabs-bar {
-    background: #fff8f2;
-    border-bottom: 2px solid #e8630a;
-    display: flex;
-    overflow-x: auto;
-  }
-  .flight-tab {
-    flex: 1; min-width: 140px;padding: 12px 20px;font-size: 14px; font-weight: 600; color: #888;background: transparent; border: none; cursor: pointer;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-    white-space: nowrap; text-align: center;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
-  }
-  .flight-tab:hover { color: #e8630a; background: #fff3ec; }
-  .flight-tab.active {
-    color: #e8630a; font-weight: 700;
-    border-bottom: 3px solid #e8630a;
-    background: #fff;
-  }
-  /* completion tick on done tabs */
-  .flight-tab.done::after { content: ' ✓'; color: #22a06b; }
-
-  /* ── SECTOR INFO BAR ── */
-  .sector-bar {
-    background: #fff; border-bottom: 1px solid #e5e7eb;
-    padding: 10px 20px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  }
-  .sector-info { display: flex; flex-direction: column; gap: 2px; }
-  .sector-route { font-size: 16px; font-weight: 700; color: #1a1a2e; }
-  .sector-pill  { background: #fff8f2; color: #c05000; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; margin-top: 2px; }
-  /* ── PAX BAR ── */
-  .pax-bar {
-    background: #fff; border-bottom: 1px solid #e5e7eb;
-    padding: 10px 20px; display: flex; align-items: center; gap: 12px;
-    overflow-x: auto;
-  }
-  .seat-count { font-size: 12px; font-weight: 600; color: #333; border-right: 1px solid #ddd; padding-right: 14px; min-width: 80px; line-height: 1.5; flex: 0 0 auto; }
-  .pax-card { border: 1.5px solid #e8630a; border-radius: 8px; padding: 8px 14px; background: #fff; cursor: pointer; transition: all 0.15s; flex: 0 0 auto; min-width: 160px; }
-  .pax-card:hover { background: #fff8f2; }
-  .pax-card.active-pax { background: #fff3ec; }
-  .pax-name   { font-size: 13px; font-weight: 700; color: #222; }
-  .pax-action { font-size: 11px; color: #999; margin-top: 2px; }
-  .pax-card.has-seat .pax-action { display: none; }
-  .pax-seat-row { display: none; margin-top: 4px; }
-  .pax-card.has-seat .pax-seat-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .pax-seat-num    { font-size: 12px; font-weight: 700; color: #1a1a2e; }
-  .pax-seat-detail { font-size: 10px; color: #777; }
-  .pax-change      { font-size: 10px; color: #5c0fd9; text-decoration: underline; cursor: pointer; white-space: nowrap; }
-
-  /* ── PROMO / LEGEND ── */
-  .promo-bar {
-    background: #fff8f2; border-bottom: 1px solid #fcd6b0;
-    padding: 7px 20px; display: flex; align-items: center; justify-content: space-between;
-  }
-  .promo-text { font-size: 12px; color: #c05000; font-weight: 500; }
-  .legend     { display: flex; gap: 14px; align-items: center; }
-  .leg-item   { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #555; }
-  .leg-swatch { width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid; }
-
-  /* ── SEATMAP ── */
-  .main { background: #f0f0f0; min-height: calc(100vh - 210px); }
-  .seatmap-area { width: 100%; overflow-x: auto; padding: 16px 18px 24px; display: flex; justify-content: flex-start; }
-  .aircraft-wrap {
-    display: block;
-    width: max-content;
-    margin: 0 auto;
-    transform: scale(1.35);
-    transform-origin: top center;
+  <style>
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background:#fff;color:#2d2d2d;padding:8px 9px 105px;margin:0;
+  box-sizing:border-box
+}
+.header-title{display:none}
+.booking-row{display:flex;align-items:center;gap:6px;width:100%;margin:0 0 10px}
+.flight-card-shell{position:relative;flex:1 1 auto;min-width:0}
+.flight-card{
+  position:relative;display:flex;align-items:center;gap:8px;
+  width:100%;height:56px;min-width:0;padding:7px 28px 7px 9px;
+  background:#fff;border:2px solid #9b4e16;border-radius:14px;
+  box-sizing:border-box;overflow:hidden
+}
+.flight-icon{
+  width:34px;height:34px;border:2px solid #9b4e16;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:#9b4e16;
+  font-size:15px;flex-shrink:0;background:#fff
+}
+.flight-card-main{min-width:0}
+.flight-card-title{
+  font-size:12px;line-height:1.2;font-weight:700;color:#292929;
+  margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.flight-card-subtitle{
+  font-size:9px;line-height:1.2;color:#777;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.flight-dropdown-arrow{
+  position:absolute;right:9px;top:50%;transform:translateY(-55%);
+  font-size:17px;color:#333;pointer-events:none
+}
+.flight-selector-overlay{
+  position:absolute;inset:0;z-index:5
+}
+.flight-selector-overlay .flight-selector-label{display:none}
+.flight-selector-overlay .flight-select{
+  position:absolute;inset:0;width:100%;height:100%;min-width:0;
+  padding:0;border:0;border-radius:14px;background:transparent;
+  color:transparent;opacity:0;cursor:pointer
+}
+.traveller-selection-wrap{
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  flex:0 0 145px;height:56px;padding:5px 9px;background:#fff;
+  border:2px solid #9b4e16;border-radius:14px;box-sizing:border-box;min-width:0
+}
+.traveller-selection-label{
+  font-size:8.5px;font-weight:600;color:#777;margin:0 0 2px;
+  text-transform:none;letter-spacing:0
+}
+.traveller-select{
+  width:100%;min-width:0;height:23px;padding:0;border:0;
+  background:#fff;color:#292929;font-size:11px;font-weight:700;outline:none;cursor:pointer
 }
 
-  #loading   { text-align: center; padding: 40px; color: #888; font-size: 14px; }
-  #error-box { display: none; margin: 20px; padding: 20px; background: #fff8f2; border: 1.5px solid #e8630a; border-radius: 8px; font-size: 13px; line-height: 1.8; color: #333; }
-  #error-box strong { color: #c00; font-size: 15px; display: block; margin-bottom: 8px; }
-  #error-box code   { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 12px; }
-  /* ── SEATMAP ALIGNMENT: A B C | D E F ── */
-  .col-headers {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    margin-bottom: 4px;
-    padding-left: 27px;
-  }
-  .col-hdr {
-    width: 38px;
-    flex: 0 0 38px;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: #666;
-  }
-  .aisle-space {
-    width: 22px;
-    flex: 0 0 22px;
-  }
-  .seat-row {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    margin: 1.5px 0;
-  }
-  .row-num {
-    width: 24px;
-    flex: 0 0 24px;
-    text-align: right;
-    font-size: 10px;
-    color: #aaa;
-    padding-right: 4px;
-  }
-  .seat {
-    width: 38px; height: 32px; border-radius: 4px; border: 1.5px solid;
-    font-size: 8.5px; font-weight: 600; display: flex; align-items: center;
-    justify-content: center; cursor: pointer; text-align: center; line-height: 1.2;
-    transition: transform 0.1s, box-shadow 0.1s; user-select: none; flex-shrink: 0;
-  }
-  .seat:hover:not(.s-occ):not(.s-empty):not(.s-blocked) { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.18); z-index: 2; position: relative; }
-  .s-std    { background: #fff;    border-color: #ccc;    color: #666; }
-  .s-leg    { background: #fff8e1; border-color: #e8630a; color: #b84000; }
-  .s-occ    { background: #e8630a; border-color: #c44d00; color: #fff; cursor: not-allowed; }
-  .s-sel    { background: #1a73e8; border-color: #0d5cb6; color: #fff; }
-  .s-empty  { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
-  .s-blocked{ background: #f3f4f6; border-color: #ddd; color: #bbb; cursor: not-allowed; }
+.toolbar{
+  display:flex;align-items:center;gap:5px;margin:0 0 9px;
+  overflow-x:auto;scrollbar-width:none;padding-bottom:1px
+}
+.toolbar::-webkit-scrollbar{display:none}
+.search-box{
+  width:45px;height:36px;flex:0 0 45px;border-radius:22px;background:#f3f3f3;
+  display:flex;align-items:center;justify-content:center;color:#252525;cursor:pointer;
+  border:1px solid transparent;box-sizing:border-box
+}
+.search-box.active{border-color:#ff6500;background:#fff}
+.search-box svg{width:22px;height:22px}
+.search-input-wrap{display:none;align-items:center;gap:8px;flex:0 0 165px}
+.search-input-wrap.show{display:flex}
+.search-input{width:100%;height:36px;box-sizing:border-box;border:1px solid #ddd;
+  border-radius:24px;padding:0 12px;outline:none;font-size:11px;background:#fff}
+.filter-pill{
+  flex:0 0 auto;height:36px;padding:0 12px;border:1px solid transparent;
+  border-radius:22px;background:#f3f3f3;color:#666;font-size:10px;font-weight:700;
+  cursor:pointer;white-space:nowrap
+}
+.filter-pill.active{background:#fff;border-color:#ff6500;color:#222}
+.veg-filter{
+  margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  color:#333;font-size:10px;font-weight:600;white-space:nowrap
+}
+.veg-toggle{
+  width:39px;height:24px;border-radius:14px;background:#dedede;position:relative;
+  cursor:pointer;transition:.2s
+}
+.veg-toggle::after{
+  content:"";position:absolute;width:20px;height:20px;top:2px;left:2px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:.2s
+}
+.veg-toggle.on{background:#ff6500}
+.veg-toggle.on::after{transform:translateX(15px)}
+.meal-info{margin:0 3px 11px}
+.meal-info p{margin:0 0 6px;font-size:10px;line-height:1.35;color:#3e3e3e}
+.menu-container{margin-top:0;background:transparent;border-radius:0}
+.meal-item{
+  display:flex;gap:10px;padding:10px;background:#fff;border:1px solid #eee;
+  border-radius:12px;margin-bottom:9px;box-shadow:0 2px 7px rgba(0,0,0,.04);
+  align-items:flex-start
+}
+.meal-img-container{position:relative;flex-shrink:0}
+.meal-img{width:90px;height:100px;border-radius:9px;object-fit:cover}
+.beverage-badge{
+  position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+  background:#4CAF50;color:#fff;font-size:8px;padding:2px 5px;border-radius:9px;
+  white-space:nowrap;font-weight:500
+}
+.meal-left{flex:1;min-width:0}
+.meal-name{font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:4px;line-height:1.3}
+.meal-description{font-size:10px;color:#555;line-height:1.35;margin-bottom:6px}
+.meal-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}
+.meal-tag{font-size:8px;padding:2px 6px;border-radius:9px;font-weight:600}
+.nutrition-info{font-size:9px;color:#666;margin-top:4px;padding:4px 6px;background:#f8f8f8;border-radius:5px;display:inline-block}
+.meal-price{font-size:12px;font-weight:700;color:#ff6a3d;margin-top:4px}
+.qty-box{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.qty-btn{
+  width:28px;height:28px;border-radius:7px;border:none;background:#ff6a3d;color:#fff;
+  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600
+}
+.qty-btn:disabled{background:#ccc;cursor:not-allowed}
+.qty-count{min-width:18px;text-align:center;font-size:12px;font-weight:bold}
+.controls{
+  display:none;align-items:center;justify-content:space-between;gap:8px;
+  margin:2px 0 12px
+}
+.controls button{
+  flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:9px;
+  background:#fff;color:#333;font-size:11px;font-weight:700;cursor:pointer
+}
+.controls button:disabled{background:#eee;color:#aaa;cursor:not-allowed}
+.total-section{
+  position:fixed;bottom:0;left:0;right:0;background:#fff;padding:9px 12px;
+  box-shadow:0 -2px 10px rgba(0,0,0,.1);z-index:100
+}
+.total-details{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.total-items{font-size:10px;color:#666}.total-amount{font-size:16px;font-weight:700;color:#1a1a2e}
+.confirm-btn{
+  width:100%;padding:11px;border:none;border-radius:9px;background:#ff6500;
+  color:#fff;font-size:13px;font-weight:600;cursor:pointer
+}
+.confirm-btn:disabled{background:#ccc;cursor:not-allowed}
+.body-padding{padding-bottom:110px}
+.success-screen{
+  display:none;position:fixed;inset:0;background:white;
+  align-items:center;justify-content:center;flex-direction:column
+}
+.success-icon{font-size:50px;color:green}
 
-  .exit-label-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 3px;
-    margin: 4px 0;
-    padding: 0;
-    width: 100%;
-  }
-  .exit-lbl {
-    background: #e8630a;
-    color: #fff;
-    font-size: 9px;
-    font-weight: 800;
-    padding: 3px 7px;
-    border-radius: 3px;
-    text-align: center;
-    letter-spacing: 0.5px;
-    width: 38px;
-    flex-shrink: 0;
-  }
-  .exit-middle {
-    flex: 1;
-    min-width: 0;
-  }
-  
-  /* ── BOTTOM BAR ── */
-  .bottom-bar {
-    background: #fff; border-top: 2px solid #e5e7eb;
-    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
-    position: sticky; bottom: 0; z-index: 100;
-  }
-  .price-info { display: flex; flex-direction: column; gap: 2px; }
-  .price-total { font-size: 20px; font-weight: 800; color: #e8630a; }
-  .price-link  { font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; }
-  .action-area { display: flex; align-items: center; gap: 12px; }
-  .btn-action  { border: none; padding: 10px 26px; border-radius: 5px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
-  .btn-secondary { background: #fff; color: #e8630a; border: 1.5px solid #e8630a; }
-  .btn-secondary:hover { background: #fff8f2; }
-  .btn-primary   { background: #e8630a; color: #fff; }
-  .btn-primary:hover   { background: #c95500; }
-
-  /* next-flight button (shown when on first tab and all pax have seats) */
-  .btn-next { background: #1a73e8; color: #fff; }
-  .btn-next:hover { background: #1558b0; }
-  
-  .seat-tooltip {
-    position: fixed; background: #222; color: #fff; font-size: 11px; padding: 6px 10px;
-    border-radius: 4px; pointer-events: none; z-index: 9999; display: none;
-    white-space: nowrap; line-height: 1.6;
-  }
-  
-  @media (max-width: 768px) {
-    .seat { width: 28px; height: 24px; font-size: 6.5px; }
-    .col-hdr, .exit-lbl { width: 28px; font-size: 7px; }
-    .aisle-space { width: 14px; }
-    .col-headers, .exit-label-row { padding-left: 20px; }
-    .row-num { width: 18px; font-size: 8px; }
-    .bottom-bar { padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
-    .btn-action { padding: 8px 14px; font-size: 12px; }
-  }
-  @media (max-width: 480px) {
-    .seat { width: 23px; height: 20px; font-size: 5px; }
-    .col-hdr, .exit-lbl { width: 23px; }
-    .aisle-space { width: 10px; }
-    .row-num { width: 13px; font-size: 6px; }
-    .seat-row { gap: 1.5px; margin: 0.5px 0; }
-    .col-headers { gap: 1.5px; padding-left: 14px; }
-    .exit-label-row { padding: 0; gap: 1.5px; }
-  }
+@media(max-width:600px){
+  body{padding:7px 8px 104px}
+  .booking-row{gap:4px}
+  .flight-card{height:50px;padding:5px 25px 5px 7px;border-radius:12px}
+  .flight-icon{width:29px;height:29px;font-size:13px}
+  .flight-card-title{font-size:11px}.flight-card-subtitle{font-size:8px}
+  .traveller-selection-wrap{flex-basis:120px;height:50px;padding:5px 7px;border-radius:12px}
+  .traveller-select{font-size:10px;height:20px}
+  .traveller-selection-label{font-size:8px}
+  .toolbar{flex-wrap:nowrap}
+  .filter-pill{padding:0 11px;font-size:10px}
+  .search-box{flex-basis:44px;width:44px}
+  .veg-filter{display:none}
+  .meal-info p{font-size:10px}
+}
 </style>
-</head>
-<body>
+  </head>
 
-<!-- ① FLIGHT SEGMENT TABS — full-width at the very top -->
-<div class="flight-tabs-bar" id="flight-tabs-bar" style="display:none;"></div>
+  <body>
 
-<!-- ② SECTOR INFO BAR -->
-<div class="sector-bar">
-  <div class="sector-info">
-    <div class="sector-route" id="sector-route">Loading...</div>
-    <span class="sector-pill"  id="sector-flight">Flight details</span>
-  </div>
-</div>
+  <div id="mainContent">
+    <div class="header-title">MEAL SELECTION</div>
 
-<!-- ③ PAX BAR -->
-<div class="pax-bar" id="pax-bar">
-  <div class="seat-count" id="seat-count-display">0/0 Seats<br>selected</div>
-  <!-- cards injected by JS -->
-</div>
-
-<!-- ④ PROMO / LEGEND -->
-<div class="promo-bar">
-  <span class="promo-text">Enjoy generous legroom on our seats starting at just ₹150</span>
-  <div class="legend">
-    <div class="leg-item"><div class="leg-swatch" style="background:#fff8e1;border-color:#e8630a;"></div> A+</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#f3f4f6;border-color:#ccc;"></div> Non-reclining</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#e8630a;border-color:#c44d00;"></div> Occupied</div>
-  </div>
-</div>
-
-<!-- ⑤ SEATMAP -->
-<div class="main">
-  <div class="seatmap-area">
-    <div id="loading">Loading seat map…</div>
-    <div id="error-box"></div>
-    <div class="aircraft-wrap" id="seatmap-root" style="display:none;"></div>
-  </div>
-</div>
-
-<!-- ⑥ BOTTOM BAR -->
-<div class="bottom-bar">
-  <div class="price-info">
-    <div class="price-total" id="price-display">₹0</div>
-    <div class="price-link" id="summary-link" style="display:none;">View summary</div>
-  </div>
-  <div class="action-area">
-    <button class="btn-action btn-primary"   id="confirm-btn" onclick="handleConfirm()">Confirm seat</button>
-  </div>
-</div>
-
-<div class="seat-tooltip" id="tooltip"></div>
-
-<script>
-const BASE_PRICE = 0;
-
-let passengerNames = [];
-let numPax = 3;
-let currentPaxId = 1;
-let currentFlightIdx = 0;
-let perFlightSeats = [];
-let allParsedMaps = [];
-let preferredSeats = [];
-let apiBaseUrl = '';
-let authToken = '';
-let qpApiKey = '';
-let qpSource = 'CHATBOTWEB';
-let journeyKeys = [];
-let passengerKeys = [];
-let customerNumber = '';
-let pnr = '';
-let tripSummary = '';
-let totalAmount = 0;
-let currencyCode = 'INR';
-let segmentMap = [];
-
-function showLoading(v) { document.getElementById('loading').style.display = v ? 'block' : 'none'; }
-function showError(html) {
-  const b = document.getElementById('error-box');
-  b.style.display = 'block'; b.innerHTML = html;
-}
-function showMap() {
-  document.getElementById('seatmap-root').style.display = 'block';
-}
-function getQueryParam(name) {
-  return new URLSearchParams(window.location.search).get(name) || '';
-}
-function buildSeatMapPayload(raw) {
-  let flightList = [];
-  if (Array.isArray(raw?.data) && raw.data.length > 0) {
-    raw.data.forEach(item => flightList.push(item?.seatMapAvailability ?? item));
-  } else if (raw?.seatMapAvailability) {
-    flightList = [raw.seatMapAvailability];
-  } else {
-    flightList = [raw];
-  }
-  return flightList;
-}
-async function fetchSeatMapFromApi() {
-  const headers = {
-    'Authorization': authToken,
-    'Content-Type': 'application/json',
-    'QP-BOT-API-KEY': qpApiKey,
-    'QP-BOT-SOURCE': qpSource
-  };
-  const response = await fetch(`${apiBaseUrl}/api/ibe/agents/seatmap`, { headers });
-  if (!response.ok) throw new Error(`Seatmap API failed (${response.status})`);
-  return response.json();
-}
-
-async function fetchPreferredSeatsFromApi() {
-  if (!customerNumber) return [];
-  const headers = {
-    'Authorization': authToken,
-    'QP-BOT-API-KEY': qpApiKey,
-    'QP-BOT-SOURCE': qpSource
-  };
-  const response = await fetch(`${apiBaseUrl}/api/ibe/agents/preferred-seats?customerNumber=${encodeURIComponent(customerNumber)}`, { headers });
-  if (!response.ok) return [];
-  const json = await response.json();
-  return Array.isArray(json?.data) ? json.data : [];
-}
-
-function isPreferredSeat(info, paxIndex) {
-  const paxKey = passengerKeys[paxIndex - 1] || '';
-  const seatCode = (info?.des || '').toUpperCase();
-  return preferredSeats.some(item => {
-    const preferredSeat = (item?.seat || '').toUpperCase();
-    const samePassenger = !paxKey || !item?.paxKey || item.paxKey === paxKey;
-    return samePassenger && preferredSeat && preferredSeat === seatCode;
-  });
-}
-
-async function loadAndRenderFromApi() {
-  showLoading(true);
-  try {
-    const seatMapResponse = await fetchSeatMapFromApi();
-    preferredSeats = await fetchPreferredSeatsFromApi();
-    const flightList = buildSeatMapPayload(seatMapResponse);
-    renderSeatMapData(flightList);
-    showLoading(false);
-    showMap();
-  } catch (err) {
-    showLoading(false);
-    showError(`<strong>⚠ Could not load seat map</strong> ${err.message}<br><br>
-      <b>Common fixes:</b><br>• Verify the bot passed a valid auth token and API base URL`);
-  }
-}
-
-function renderSeatMapData(flightList) {
-  // FIXED: Properly extract passenger names from query params if provided
-  const queryPassengerNames = getQueryParam('passenger_names');
-  if (queryPassengerNames) {
-    passengerNames = queryPassengerNames.split(',').map(name => name.trim()).filter(Boolean);
-  } else {
-    passengerNames = extractPassengerNames(flightList[0] || {});
-  }
-  
-  numPax = passengerNames.length || 3;
-  if (passengerNames.length === 0) {
-    for (let i = 1; i <= numPax; i++) passengerNames.push(`Passenger ${i}`);
-  }
-const tripLabels = tripSummary
-  ? tripSummary.split("|").map(s => s.trim())
-  : [];
-
-allParsedMaps = flightList.map((fd, fi) => {
-  perFlightSeats[fi] = {};
-  for (let p = 1; p <= numPax; p++) {
-    perFlightSeats[fi][p] = {
-      seat: null,
-      fee: 0,
-      detail: '',
-      unitKey: null
-    };
-  }
-
-  return {
-    data: fd,
-    parsed: parseSeatMap(fd),
-
-    // Use the corresponding route from trip_summary
-    label: tripLabels[fi] || `Flight ${fi + 1}`,
-
-    flightNum: buildFlightNum(fd),
-    journeyKey: resolveJourneyKeyForFlight(fd, fi)
-  };
-});
-
-  buildFlightTabs();
-  buildPaxCards();
-  switchToFlight(0);
-}
-
-function buildFlightLabel(data) {
-    const root = data?.seatMap ?? data;
-    const seg = (root?.segments ?? root?.legs ?? [])[0];
-
-    if (seg) {
-        const from = seg.departureStation || seg.origin || seg.from;
-        const to = seg.arrivalStation || seg.destination || seg.to;
-
-        if (from && to) {
-            return `${from} → ${to}`;
-        }
-    }
-
-    return "Flight";
-}
-
-function buildFlightNum(data) {
-  const root = data?.seatMap ?? data;
-  return root?.name ? `Flight ${root.name}` : 'Flight details';
-}
-
-function buildFlightTabs() {
-  const bar = document.getElementById('flight-tabs-bar');
-  bar.innerHTML = '';
-  if (allParsedMaps.length <= 1) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
-  allParsedMaps.forEach((m, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'flight-tab' + (i === 0 ? ' active' : '');
-    btn.id = `ftab-${i}`;
-    btn.textContent = m.label;
-    btn.onclick = () => switchToFlight(i);
-    bar.appendChild(btn);
-  });
-}
-
-function updateFlightTabs() {
-  allParsedMaps.forEach((_, i) => {
-    const btn = document.getElementById(`ftab-${i}`);
-    if (!btn) return;
-    btn.className = 'flight-tab' + (i === currentFlightIdx ? ' active' : '');
-    const seats = perFlightSeats[i] ?? {};
-    const allDone = Object.values(seats).every(s => s.seat !== null);
-    if (allDone && i !== currentFlightIdx) btn.classList.add('done');
-  });
-}
-
-function buildPaxCards() {
-  const bar = document.getElementById('pax-bar');
-  bar.innerHTML = `<div class="seat-count" id="seat-count-display">0/${numPax} Seats<br>selected</div>`;
-  for (let i = 1; i <= numPax; i++) {
-    const div = document.createElement('div');
-    div.className = 'pax-card' + (i === 1 ? ' active-pax' : '');
-    div.id = `pax-${i}`;
-    div.innerHTML = `
-      <div class="pax-name">${passengerNames[i - 1]}</div>
-      <div class="pax-action">Select seat</div>
-      <div class="pax-seat-row">
-        <div>
-          <div class="pax-seat-num" id="pax-${i}-seat"></div>
-          <div class="pax-seat-detail" id="pax-${i}-detail"></div>
+    <div class="booking-row">
+      <div class="flight-card-shell">
+        <div class="flight-card">
+          <div class="flight-icon">✈</div>
+          <div class="flight-card-main">
+            <div class="flight-card-title" id="flightRoute">Loading flight...</div>
+            <div class="flight-card-subtitle" id="flightDeparture"></div>
+          </div>
+          <span class="flight-dropdown-arrow" id="flightDropdownArrow">⌄</span>
         </div>
-        <div class="pax-change">Change</div>
-      </div>`;
-    div.addEventListener('click', () => selectPax(i));
-    bar.appendChild(div);
-  }
-}
+        <div id="flightSelectorWrap" class="flight-selector-overlay"></div>
+      </div>
+      <div id="travellerSelectionWrap" class="traveller-selection-wrap"></div>
+    </div>
 
-function selectPax(i) {
-  currentPaxId = i;
-  document.querySelectorAll('.pax-card').forEach(c => c.classList.remove('active-pax'));
-  document.getElementById(`pax-${i}`)?.classList.add('active-pax');
-  refreshSeatVisuals();
-}
+    <div class="toolbar">
+      <div class="search-box" id="searchButton" onclick="toggleSearch()" title="Search meals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="10.8" cy="10.8" r="6.8"></circle>
+          <path d="M16 16l5 5"></path>
+        </svg>
+      </div>
+      <div class="search-input-wrap" id="searchInputWrap">
+        <input id="mealSearch" class="search-input" type="search" placeholder="Search meals..." oninput="applyMealFilters()">
+      </div>
+      <button class="filter-pill active" data-filter="all" onclick="setMealCategory('all', this)">All Meals</button>
+      <button class="filter-pill" data-filter="gourmet" onclick="setMealCategory('gourmet', this)">Gourmet</button>
+      <button class="filter-pill" data-filter="kids" onclick="setMealCategory('kids', this)">Kids</button>
+      <button class="filter-pill" data-filter="desserts" onclick="setMealCategory('desserts', this)">Desserts</button>
+      <button class="filter-pill" data-filter="refreshments" onclick="setMealCategory('refreshments', this)">Refreshments</button>
+      <button class="filter-pill" data-filter="ready" onclick="setMealCategory('ready', this)">Ready to Eat</button>
+      <button class="filter-pill" data-filter="salads" onclick="setMealCategory('salads', this)">Salads</button>
+      <button class="filter-pill" data-filter="beverages" onclick="setMealCategory('beverages', this)">Beverages</button>
+      <div class="veg-filter">
+        <span>Only Veg</span>
+        <div class="veg-toggle" id="vegToggle" onclick="toggleVegFilter()" role="switch" aria-checked="false"></div>
+      </div>
+    </div>
 
-function switchToFlight(idx) {
-  currentFlightIdx = idx;
-  currentPaxId = 1;
-  selectPax(1);
+    <div class="meal-info">
+      <p>All meals include a beverage. Kindly select your preferred beverage onboard.</p>
+      <p>If we are unable to serve your pre-booked meal, we will provide you with an alternate option based on availability on board, or a full refund for any meals you have purchased.</p>
+    </div>
 
-  const m = allParsedMaps[idx];
-  document.getElementById('sector-route').textContent = m.label;
-  document.getElementById('sector-flight').textContent = m.flightNum;
+    <div id="menu" class="menu-container"></div>
 
-  renderSeatMap(m.parsed);
-  updateUIForFlight();
-  updateFlightTabs();
-  updateConfirmButton();
-}
+    <div class="controls">
+      <button onclick="prevPage()">← Prev</button>
+      <button onclick="nextPage()">Next →</button>
+    </div>
 
-function updateUIForFlight() {
-  const seats = perFlightSeats[currentFlightIdx] ?? {};
-  const sel = Object.values(seats).filter(s => s.seat).length;
-  document.getElementById('seat-count-display').innerHTML = `${sel}/${numPax} Seats<br>selected`;
+    <div class="body-padding"></div>
+  </div>
 
-  for (let i = 1; i <= numPax; i++) {
-    const card = document.getElementById(`pax-${i}`);
-    const sn = document.getElementById(`pax-${i}-seat`);
-    const sd = document.getElementById(`pax-${i}-detail`);
-    if (!card) continue;
-    const info = seats[i] ?? {};
-    if (info.seat) {
-      sn.textContent = info.seat;
-      sd.textContent = info.detail ?? '';
-      card.classList.add('has-seat');
-    } else {
-      sn.textContent = '';
-      sd.textContent = '';
-      card.classList.remove('has-seat');
+  <div class="total-section">
+    <div class="total-details">
+      <div class="total-items"><span id="totalItems">0</span> items (<span id="totalMeals">0</span> meals)</div>
+      <div class="total-amount">₹<span id="totalAmount">0</span></div>
+    </div>
+    <button id="confirmBtn" class="confirm-btn" onclick="confirmOrder()">
+      Confirm Order
+    </button>
+  </div>
+
+  <div id="successScreen" class="success-screen">
+    <div class="success-icon">✅</div>
+    <h2>Order Confirmed!</h2>
+  </div>
+
+  <script>
+  const SSR_AVAILABILITY_URL = "https://staging-agents-relay-uat.qp.akasaair.com/bgws/api/ibe/agents/ssrAvailabilityV2";
+  const STORYBLOK_API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
+  const DEFAULT_API_SOURCE = "CHATBOTWEB";
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const authToken = urlParams.get("auth_token") || urlParams.get("authorization") || "";
+  const qpBotApiKey = urlParams.get("qp_bot_api_key") || urlParams.get("qp-api-key") || "";
+  const qpBotSource = urlParams.get("qp_bot_source") || urlParams.get("qp-bot-source") || DEFAULT_API_SOURCE;
+  const passengerKeys = (urlParams.get("passengerKeys") || urlParams.get("passenger_keys") || urlParams.get("passenger_key") || "").split(",").map(s => s.trim()).filter(Boolean);
+  let segmentKeys = (urlParams.get("segment_keys") || urlParams.get("segment_key") || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  const travellerNamesFromUrl = (urlParams.get("travellerNames") || urlParams.get("travelerNames") || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  let meals = [];
+  // Explicit loading state: an empty array must NOT mean "no meals" while SSR is still loading.
+  let mealsLoading = true;
+
+  // Meals are also indexed by the selected flight so multiple journeys never
+  // accidentally render another journey's meals.
+  let mealsByFlight = {};
+
+  // quantities is keyed by flight and traveller: { flightKey: { travellerIndex: { mealIndex: qty } } }
+  let quantities = {};
+  let currentPage = 0;
+  let flightOptions = [];
+  let selectedFlightIndex = 0;
+  let selectedFlightSegmentKey = urlParams.get("segment_key") || (segmentKeys[0] || "");
+  let currentTraveller = 0;
+  const pageSize = 10;
+  const MAX_QTY = 5;
+  const FALLBACK_IMG = "https://via.placeholder.com/100";
+
+  // Mock pricing - in real app, this would come from API
+  const MEAL_PRICES = {
+    "Easter Special ( Non-Veg)": 850,
+    "default": 650
+  };
+
+  // -------------------------
+  // Booking context, prefilled from the URL the bot builds
+  // -------------------------
+  function parseTravellerNames(raw, count) {
+    let names = [];
+    if (raw) {
+      names = raw.split(",").map(n => n.trim()).filter(Boolean);
     }
-  }
-
-  // Seat-selection price only: start from 0 and update with selected seat fees.
-  // The original flight/booking total is intentionally ignored.
-  let totalFee = 0;
-  perFlightSeats.forEach(fs => {
-    Object.values(fs).forEach(p => {
-      totalFee += Number(p?.fee) || 0;
-    });
-  });
-
-  const priceDisplay = document.getElementById('price-display');
-  priceDisplay.textContent = currencyCode + ' ' + totalFee.toLocaleString('en-IN');
-
-  // Summary is intentionally hidden.
-  const summaryLink = document.getElementById('summary-link');
-  if (summaryLink) summaryLink.style.display = 'none';
-}
-
-function updateConfirmButton() {
-  const btn = document.getElementById('confirm-btn');
-  const isLast = currentFlightIdx === allParsedMaps.length - 1;
-  if (!isLast) {
-    btn.textContent = 'Next flight →';
-    btn.className = 'btn-action btn-next';
-  } else {
-    btn.textContent = 'Confirm seat';
-    btn.className = 'btn-action btn-primary';
-  }
-}
-
-function handleConfirm() {
-  const isLast = currentFlightIdx === allParsedMaps.length - 1;
-  if (!isLast) {
-    switchToFlight(currentFlightIdx + 1);
-    document.getElementById(`ftab-${currentFlightIdx}`)?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-  } else {
-    confirmSeat();
-  }
-}
-
-function parseSeatMap(data) {
-  const root = data?.seatMap ?? data;
-  const decks = root?.decks ?? {};
-  const deck1 = decks['1'] ?? Object.values(decks)[0] ?? {};
-  const allUnits = [];
-  Object.values(deck1?.compartments ?? {}).forEach(comp => {
-    if (Array.isArray(comp.units)) allUnits.push(...comp.units);
-  });
-  if (allUnits.length === 0) throw new Error('No seat units found in JSON.');
-
-  const fees = {};
-  Object.values(data?.fees ?? {}).forEach(paxFees => {
-    Object.values(paxFees?.groups ?? {}).forEach(grp => {
-      const sfe = (grp?.fees ?? []).flatMap(f => f?.serviceCharges ?? []).find(s => s.code === 'SFE');
-      if (sfe != null && !(grp.group in fees)) fees[grp.group] = sfe.amount;
-    });
-  });
-
-  const hasProp = (u, code) => (u.properties ?? []).some(p => p.code === code && p.value === 'True');
-  const rowMap = {};
-  allUnits.forEach(u => {
-    if (!u.designator || u.designator.startsWith('$')) return;
-    const m = u.designator.match(/^(\d+)([A-Z])$/); if (!m) return;
-    const row = +m[1], col = m[2];
-    if (!rowMap[row]) rowMap[row] = {};
-    const availabilityText = (u.availability ?? '').toString().toLowerCase();
-    const isOpen = availabilityText === 'open';
-    rowMap[row][col] = {
-      des: u.designator,
-      key: u.unitKey,
-      avail: isOpen ? 1 : 0,
-      assignable: !!u.assignable && isOpen,
-      group: u.group ?? 0,
-      price: fees[u.group] ?? 0,
-      isWindow: hasProp(u, 'WINDOW'),
-      isAisle: hasProp(u, 'AISLE'),
-      isLeg: hasProp(u, 'LEGROOM'),
-      isExit: hasProp(u, 'EXITROW'),
-      isDisab: hasProp(u, 'DISABIL'),
-      isPet: hasProp(u, 'PET'),
-      noChild: hasProp(u, 'NCHILD')
-    };
-  });
-  return { rowMap, sortedRows: Object.keys(rowMap).map(Number).sort((a, b) => a - b) };
-}
-
-function buildSeatDetail(info) {
-  if (!info) return '';
-  if (info.isWindow) return 'Window';
-  if (info.isAisle) return 'Aisle';
-  if (info.isLeg) return 'Extra legroom';
-  if (info.isExit) return 'Exit row';
-  return 'Middle';
-}
-
-function extractPassengerNames(data) {
-  const list = data?.passengers ?? data?.passengerList ?? data?.passengerDetails ?? data?.passenger ?? [];
-  if (!Array.isArray(list)) return [];
-  return list.map(item => item?.name || [item?.firstName, item?.lastName].filter(Boolean).join(' ')).filter(Boolean);
-}
-
-function renderSeatMap({ rowMap, sortedRows }) {
-  const root = document.getElementById('seatmap-root');
-  root.innerHTML = '';
-  // Akasa 737 MAX seat layout: A B C | D E F.
-  // Keep the columns fixed so the headers and every row stay perfectly aligned,
-  // even when a particular row has a missing/blocked seat.
-  const LEFT = ['A', 'B', 'C'];
-  const RIGHT = ['D', 'E', 'F'];
-
-  const hdr = document.createElement('div');
-  hdr.className = 'col-headers';
-
-  LEFT.forEach(c => {
-    const d = document.createElement('div');
-    d.className = 'col-hdr';
-    d.textContent = c;
-    hdr.appendChild(d);
-  });
-
-  const headerAisle = document.createElement('div');
-  headerAisle.className = 'aisle-space';
-  hdr.appendChild(headerAisle);
-
-  RIGHT.forEach(c => {
-    const d = document.createElement('div');
-    d.className = 'col-hdr';
-    d.textContent = c;
-    hdr.appendChild(d);
-  });
-
-  root.appendChild(hdr);
-
-  let prevExit = false;
-  sortedRows.forEach((rowNum, idx) => {
-    const rowData = rowMap[rowNum] ?? {};
-    const isExit = Object.keys(rowData).some(c => rowData[c]?.isExit);
-    if (isExit && !prevExit) root.appendChild(buildExitLabelRow(rowData, LEFT, RIGHT));
-
-    const rowDiv = document.createElement('div'); rowDiv.className = 'seat-row';
-    const numDiv = document.createElement('div'); numDiv.className = 'row-num'; numDiv.textContent = rowNum;
-    rowDiv.appendChild(numDiv);
-    LEFT.forEach(c => rowDiv.appendChild(buildSeat(rowData[c], rowNum, c)));
-    const aisle = document.createElement('div'); aisle.className = 'aisle-space'; rowDiv.appendChild(aisle);
-    RIGHT.forEach(c => rowDiv.appendChild(buildSeat(rowData[c], rowNum, c)));
-    root.appendChild(rowDiv);
-
-    const nextRow = sortedRows[idx + 1];
-    const nextIsExit = nextRow ? Object.keys(rowMap[nextRow] ?? {}).some(c => rowMap[nextRow][c]?.isExit) : false;
-    if (isExit && !nextIsExit) root.appendChild(buildExitLabelRow(rowData, LEFT, RIGHT));
-    prevExit = isExit;
-  });
-}
-
-function buildExitLabelRow(rowData, LEFT, RIGHT) {
-  const wrap = document.createElement('div');
-  wrap.className = 'exit-label-row';
-
-  // Exit markers sit outside the seat sheet: one on the far left and one on the far right.
-  const leftExit = document.createElement('div');
-  leftExit.className = 'exit-lbl';
-  leftExit.textContent = 'Exit';
-
-  const middle = document.createElement('div');
-  middle.className = 'exit-middle';
-
-  const rightExit = document.createElement('div');
-  rightExit.className = 'exit-lbl';
-  rightExit.textContent = 'Exit';
-
-  wrap.appendChild(leftExit);
-  wrap.appendChild(middle);
-  wrap.appendChild(rightExit);
-
-  return wrap;
-}
-
-function buildSeat(info, rowNum, col) {
-  const div = document.createElement('div'); div.className = 'seat';
-  if (!info) { div.classList.add('s-empty'); return div; }
-  const occ = !info.assignable || info.avail === 0;
-  div.classList.add(occ ? 's-occ' : (info.isLeg || info.isExit) ? 's-leg' : 's-std');
-  if (isPreferredSeat(info, currentPaxId)) div.classList.add('s-preferred');
-  div.textContent = info.price === 0 ? 'Free' : '₹' + info.price;
-  div.dataset.rowCol = `${rowNum}${col}`;
-  div.dataset.price = info.price;
-  div.dataset.isLeg = info.isLeg ? '1' : '0';
-  div.dataset.isExit = info.isExit ? '1' : '0';
-  div.dataset.isWindow = info.isWindow ? '1' : '0';
-  div.dataset.isAisle = info.isAisle ? '1' : '0';
-  if (!occ) div.addEventListener('click', () => handleSeatClick(div, info, rowNum, col));
-  div.addEventListener('mouseenter', e => showTip(e, info, rowNum, col));
-  div.addEventListener('mouseleave', hideTip);
-  div.addEventListener('mousemove', moveTip);
-  return div;
-}
-
-function flightSeats() { return perFlightSeats[currentFlightIdx]; }
-
-function isSeatTakenByOther(id, pax) {
-  const seats = flightSeats();
-  for (let i = 1; i <= numPax; i++) if (i !== pax && seats[i]?.seat === id) return true;
-  return false;
-}
-
-function handleSeatClick(div, info, rowNum, col) {
-  const id = `${rowNum}${col}`;
-  const seats = flightSeats();
-  if (isSeatTakenByOther(id, currentPaxId)) { alert('This seat is already selected by another passenger.'); return; }
-
-  const prev = seats[currentPaxId]?.seat;
-  if (prev) {
-    const pd = document.querySelector(`[data-row-col="${prev}"]`);
-    if (pd) {
-      pd.classList.remove('s-sel');
-      pd.classList.add((pd.dataset.isLeg === '1' || pd.dataset.isExit === '1') ? 's-leg' : 's-std');
-      pd.textContent = +pd.dataset.price === 0 ? 'Free' : '₹' + pd.dataset.price;
+    // Pad or fall back to generic labels if names are missing/insufficient
+    for (let i = names.length; i < count; i++) {
+      names.push(`Traveller ${i + 1}`);
     }
+    return names;
   }
 
-  if (seats[currentPaxId]?.seat === id) {
-    seats[currentPaxId] = { seat: null, fee: 0, detail: '', unitKey: null };
-    refreshSeatVisuals(); updateUIForFlight(); return;
-  }
-
-  div.classList.remove('s-std', 's-leg'); div.classList.add('s-sel'); div.textContent = id;
-  seats[currentPaxId] = { seat: id, fee: info.price, detail: buildSeatDetail(info), unitKey: info.key };
-
-  const nextUnsated = Object.keys(seats).map(Number).find(p => p > currentPaxId && !seats[p]?.seat);
-  if (nextUnsated) selectPax(nextUnsated);
-
-  refreshSeatVisuals(); updateUIForFlight(); updateFlightTabs();
-}
-
-function refreshSeatVisuals() {
-  const seats = flightSeats();
-  document.querySelectorAll('.seat').forEach(seat => {
-    const rc = seat.dataset.rowCol; if (!rc) return;
-    const mine = seats[currentPaxId]?.seat === rc;
-    const other = isSeatTakenByOther(rc, currentPaxId);
-    seat.classList.remove('s-sel', 's-blocked');
-    if (mine) {
-      seat.classList.remove('s-std', 's-leg'); seat.classList.add('s-sel'); seat.textContent = rc;
-    } else if (other) {
-      seat.classList.add('s-blocked'); seat.textContent = '✗';
-    } else {
-      seat.classList.remove('s-std', 's-leg');
-      seat.classList.add((seat.dataset.isLeg === '1' || seat.dataset.isExit === '1') ? 's-leg' : 's-std');
-      seat.textContent = +seat.dataset.price === 0 ? 'Free' : '₹' + seat.dataset.price;
-    }
-  });
-}
-
-const tip = document.getElementById('tooltip');
-function showTip(e, info, r, c) {
-  const lines = [`Row ${r}, Seat ${c}`];
-  if (info.isWindow) lines.push('Window');
-  if (info.isAisle) lines.push('Aisle');
-  if (info.isLeg) lines.push('Extra legroom');
-  if (info.isExit) lines.push('Exit row');
-  if (info.isPet) lines.push('Pet-friendly zone');
-  if (info.noChild) lines.push('No children');
-  if (info.isDisab) lines.push('Accessibility seat');
-  if (isPreferredSeat(info, currentPaxId)) lines.push('Preferred seat');
-  lines.push(info.avail === 0 ? 'Occupied' : 'Price: ' + (info.price === 0 ? 'Free' : '₹' + info.price));
-  tip.innerHTML = lines.join('<br>'); tip.style.display = 'block'; moveTip(e);
-}
-function moveTip(e) { tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
-function hideTip() { tip.style.display = 'none'; }
-
-function buildSeatSelectionPayload() {
-  const selectedItems = [];
-  perFlightSeats.forEach((flightSeats, fi) => {
-    const journeyKey = allParsedMaps[fi]?.journeyKey || journeyKeys[fi] || journeyKeys[0] || '';
-    Object.entries(flightSeats || {}).forEach(([pid, seatInfo]) => {
-      if (!seatInfo || !seatInfo.seat || !seatInfo.unitKey) return;
-      const passengerKey = passengerKeys[Number(pid) - 1] || '';
-      if (!journeyKey || !passengerKey) return;
-      selectedItems.push(`${journeyKey}|${passengerKey}|${seatInfo.unitKey}`);
-    });
-  });
-  return selectedItems.join(';');
-}
-
-function sendSeatSelectionToBot(payload) {
-  const parts = [];
-  if (pnr) {
-    parts.push(`pnr=${encodeURIComponent(pnr)}`);
-  }
-  parts.push(
-    `journey_keys=${encodeURIComponent(journeyKeys.join(','))}`,
-    `passenger_keys=${encodeURIComponent(passengerKeys.join(','))}`,
-    `selected_seats=${encodeURIComponent(payload)}`,
+  const explicitTravellerCount = parseInt(urlParams.get("travellers"), 10);
+  const inferredTravellerCount = Math.max(
+    Number.isFinite(explicitTravellerCount) && explicitTravellerCount > 0 ? explicitTravellerCount : 0,
+    travellerNamesFromUrl.length,
+    passengerKeys.length,
+    1
   );
 
-  const data = parts.join('||');
+  const bookingContext = {
+    pnr: urlParams.get("pnr") || "",
+    lastname: urlParams.get("lastname") || "",
+    email: urlParams.get("email") || "",
+    origin: urlParams.get("origin") || "",
+    destination: urlParams.get("destination") || "",
+    departure: urlParams.get("departure") || "",
+    travellers: inferredTravellerCount
+  };
+  bookingContext.travellerNames = travellerNamesFromUrl.length
+    ? travellerNamesFromUrl
+    : parseTravellerNames(
+        urlParams.get("travellerNames") || urlParams.get("travelerNames"),
+        bookingContext.travellers
+      );
 
-  const encoded = encodeURIComponent(data.split(',').join(';;').split('&').join('^%'));
-  const text = `{api_name:akasa_seat_selection,data:${encoded}}`;
-  const executeText = `{always execute function \`seat_selection\` ,data:${encoded}}`;
-
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage(`http://haptik-webview//perform-action?action=close&message=${text}&message_type=0`, '*');
-    // window.parent.postMessage(`http://haptik-webview//perform-action?action=close&message=${executeText}&message_type=0`, '*');
-  }else {
-    console.log('Seat selection payload:', payload);
-  }
-}
-
-function toggleSummary() {
-  if (tripSummary) {
-    alert(`Trip Summary:\n${tripSummary}\n\nTotal: ${currencyCode} ${totalAmount.toLocaleString('en-IN')}`);
-  } else {
-    alert('No trip summary available');
-  }
-}
-
-function confirmSeat() {
-  const payload = buildSeatSelectionPayload();
-  if (!payload) { alert('Please select seats for passengers.'); return; }
-  const btn = document.getElementById('confirm-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Submitting...';
-  }
-  setTimeout(() => sendSeatSelectionToBot(payload), 500);
-}
-
-function resolveJourneyKeyForFlight(fd, fi) {
-  const root = fd?.seatMap ?? fd;
-  const seg = (root?.segments ?? root?.legs ?? root?.journeys ?? [])[0] || {};
-  const from = (seg.departureStation || seg.origin || seg.from || '').toUpperCase();
-  const to = (seg.arrivalStation || seg.destination || seg.to || '').toUpperCase();
-
-  const match = segmentMap.find(m =>
-    (m.origin || '').toUpperCase() === from &&
-    (m.destination || '').toUpperCase() === to
-  );
-  if (match) return match.journeyKey;
-
-  // fallback for old data without segment_map
-  return journeyKeys[fi] || journeyKeys[0] || '';
-}
-
-function init() {
-  apiBaseUrl = getQueryParam('base_url') || '';
-  authToken = getQueryParam('auth_token') || '';
-  qpApiKey = getQueryParam('qp_bot_api_key') || '';
-  qpSource = getQueryParam('qp_bot_source') || 'CHATBOTWEB';
-  journeyKeys = (getQueryParam('journey_keys') || '').split(',').filter(Boolean);
-  passengerKeys = (getQueryParam('passenger_keys') || '').split(',').filter(Boolean);
-  customerNumber = getQueryParam('customer_number') || '';
-  pnr = getQueryParam('pnr') || getQueryParam('record_locator') || '';
   try {
-    segmentMap = JSON.parse(getQueryParam('segment_map') || '[]');
-  } catch (e) { segmentMap = []; }
-  
-  // FIXED: Read trip_summary, total_amount, and currency from query params
-  tripSummary = getQueryParam('trip_summary') || '';
-  const amountStr = getQueryParam('total_amount');
-  // Seat selection price starts at 0. Do not include the original booking/flight amount.\n  totalAmount = 0;
-  currencyCode = getQueryParam('currency') || 'INR';
-
-  if (apiBaseUrl && authToken) {
-    loadAndRenderFromApi();
-  } else {
-    showError('<strong>⚠ Missing booking context</strong> The bot did not provide the required auth token and API base URL.');
+    const parsedFlightOptions = JSON.parse(urlParams.get("flightOptions") || "[]");
+    if (Array.isArray(parsedFlightOptions) && parsedFlightOptions.length) {
+      flightOptions = parsedFlightOptions;
+    }
+  } catch (err) {
+    console.warn("Unable to parse flight options from URL", err);
   }
-}
 
-init();
-</script>
-</body>
-</html>
+  if (!flightOptions.length && (bookingContext.origin || bookingContext.destination || bookingContext.departure)) {
+    flightOptions = [{
+      origin: bookingContext.origin,
+      destination: bookingContext.destination,
+      departure: bookingContext.departure,
+      segment_key: selectedFlightSegmentKey,
+      segment_keys: segmentKeys.join(",")
+    }];
+  }
+
+  if (flightOptions.length) {
+    if (!selectedFlightSegmentKey) {
+      selectedFlightSegmentKey = flightOptions[0].segment_key || (flightOptions[0].segment_keys || "").split(",").map(s => s.trim()).filter(Boolean)[0] || "";
+    }
+
+    const matchedIndex = flightOptions.findIndex(option =>
+      getFlightSegmentKeys(option).includes(selectedFlightSegmentKey)
+    );
+    if (matchedIndex >= 0) {
+      selectedFlightIndex = matchedIndex;
+    }
+
+    const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
+    bookingContext.origin = bookingContext.origin || selectedFlight.origin || "";
+    bookingContext.destination = bookingContext.destination || selectedFlight.destination || "";
+    bookingContext.departure = bookingContext.departure || selectedFlight.departure || "";
+
+    const firstSegmentKey = selectedFlight.segment_key || (selectedFlight.segment_keys || "").split(",").map(s => s.trim()).filter(Boolean)[0] || "";
+    if (!selectedFlightSegmentKey && firstSegmentKey) {
+      selectedFlightSegmentKey = firstSegmentKey;
+    }
+  }
+
+  function renderBookingContext() {
+    const routeEl = document.getElementById("flightRoute");
+    const departureEl = document.getElementById("flightDeparture");
+
+    if (bookingContext.origin && bookingContext.destination) {
+      routeEl.textContent = `✈️ ${bookingContext.origin} → ${bookingContext.destination}`;
+    } else {
+      routeEl.textContent = "✈️ Flight details unavailable";
+    }
+
+    departureEl.textContent = bookingContext.departure
+      ? `Departs: ${bookingContext.departure}`
+      : "";
+
+    renderFlightSelector();
+    renderTravellerSelection();
+  }
+
+  function switchTraveller(idx) {
+    currentTraveller = parseInt(idx, 10) || 0;
+    render();
+  }
+
+  function renderFlightSelector() {
+    const wrap = document.getElementById("flightSelectorWrap");
+    if (!wrap) return;
+
+    if (flightOptions.length <= 1) {
+      wrap.innerHTML = "";
+      const arrow = document.getElementById("flightDropdownArrow");
+      if (arrow) arrow.style.display = "none";
+      return;
+    }
+
+    const arrow = document.getElementById("flightDropdownArrow");
+    if (arrow) arrow.style.display = "";
+
+    const label = document.createElement("div");
+    label.className = "flight-selector-label";
+    label.textContent = "Select flight";
+
+    const select = document.createElement("select");
+    select.className = "flight-select";
+    select.onchange = () => {
+      selectedFlightIndex = parseInt(select.value, 10) || 0;
+      const selectedFlight = flightOptions[selectedFlightIndex] || flightOptions[0] || {};
+      bookingContext.origin = selectedFlight.origin || bookingContext.origin;
+      bookingContext.destination = selectedFlight.destination || bookingContext.destination;
+      bookingContext.departure = selectedFlight.departure || bookingContext.departure;
+      const firstSegmentKey = (selectedFlight.segment_keys || selectedFlight.segment_key || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)[0] || "";
+      selectedFlightSegmentKey = selectedFlight.segment_key || firstSegmentKey || "";
+      segmentKeys = (selectedFlight.segment_keys || selectedFlight.segment_key || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      // Flight changed: reset only the UI page/filter position.
+      // Do NOT clear meals and do NOT call SSR again.
+      currentPage = 0;
+
+      renderBookingContext();
+      render();
+    };
+
+    flightOptions.forEach((option, idx) => {
+      const optionEl = document.createElement("option");
+      optionEl.value = idx;
+      optionEl.textContent = `${option.origin || ""} → ${option.destination || ""} • ${option.departure || ""}`.trim();
+      if (idx === selectedFlightIndex) optionEl.selected = true;
+      select.appendChild(optionEl);
+    });
+
+    wrap.innerHTML = "";
+    wrap.appendChild(label);
+    wrap.appendChild(select);
+  }
+
+  function getFlightStorageKey(index = selectedFlightIndex) {
+    const flight = flightOptions[index] || flightOptions[0] || {};
+    const explicitKey = flight.segment_key || flight.flight_key || flight.id || "";
+    if (explicitKey) return explicitKey;
+
+    const fallbackParts = [flight.origin, flight.destination, flight.departure, index + 1]
+      .filter(Boolean)
+      .map(part => String(part).trim())
+      .join("-");
+
+    return fallbackParts || `flight-${index}`;
+  }
+
+  function getCurrentFlightKey() {
+    return getFlightStorageKey(selectedFlightIndex);
+  }
+
+  function getJourneyKeyForFlightKey(flightKey) {
+    const option = flightOptions.find((option, idx) => getFlightStorageKey(idx) === flightKey);
+    return option?.journeyKey || "";
+  }
+
+  function getFlightSegmentKeys(flight) {
+    if (!flight || typeof flight !== "object") return [];
+
+    const raw = [
+      flight.segment_key,
+      flight.segmentKey,
+      flight.segment_keys,
+      flight.segmentKeys
+    ].filter(Boolean);
+
+    return raw
+      .flatMap(value => Array.isArray(value) ? value : String(value).split(","))
+      .map(value => String(value).trim())
+      .filter(Boolean);
+  }
+
+  function normalizeKey(value) {
+    return value == null ? "" : String(value).trim();
+  }
+
+  function getMealsForFlightKey(flightKey) {
+    // Primary source: meals explicitly assigned to this flight.
+    if (Object.prototype.hasOwnProperty.call(mealsByFlight, flightKey)) {
+      return mealsByFlight[flightKey] || [];
+    }
+
+    // Backward-compatible fallback for a single-flight booking.
+    if (flightOptions.length <= 1) {
+      return meals;
+    }
+
+    // Secondary fallback: journeyKey matching when it is supplied in flightOptions.
+    const journeyKey = getJourneyKeyForFlightKey(flightKey);
+    if (journeyKey) {
+      const journeyMeals = meals.filter(
+        meal => normalizeKey(meal.journeyKey) === normalizeKey(journeyKey)
+      );
+      if (journeyMeals.length) return journeyMeals;
+    }
+
+    return [];
+  }
+
+  function getAllSegmentKeys() {
+    return flightOptions
+      .flatMap(option => (option.segment_keys || option.segment_key || "").split(","))
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function getCurrentTravellerQuantities() {
+    const flightKey = getCurrentFlightKey();
+    if (!quantities[flightKey]) quantities[flightKey] = {};
+    if (!quantities[flightKey][currentTraveller]) quantities[flightKey][currentTraveller] = {};
+    return quantities[flightKey][currentTraveller];
+  }
+
+  function renderTravellerSelection() {
+    const wrap = document.getElementById("travellerSelectionWrap");
+    if (!wrap) return;
+
+    wrap.innerHTML = "";
+    const label = document.createElement("div");
+    label.className = "traveller-selection-label";
+    label.textContent = "Select traveller";
+
+    const select = document.createElement("select");
+    select.className = "traveller-select";
+    select.onchange = () => {
+      switchTraveller(select.value);
+    };
+
+    bookingContext.travellerNames.forEach((name, idx) => {
+      const option = document.createElement("option");
+      option.value = idx;
+      const count = getTravellerItemCount(idx);
+      option.textContent = count > 0 ? `${name} (${count})` : name;
+      if (idx === currentTraveller) option.selected = true;
+      select.appendChild(option);
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(select);
+  }
+
+  // extract text
+  function extractText(field) {
+    if (!field) return "";
+    if (typeof field === "string") return field;
+    if (Array.isArray(field)) return field.map(extractText).join(", ");
+    if (field.text) return field.text;
+    if (field.content) return field.content.map(extractText).join(" ");
+    return "";
+  }
+
+  function getImage(meal) {
+    let url = meal.mealThumbnailImage?.filename || meal.mealThumbnailImage || "";
+    if (!url) return FALLBACK_IMG;
+    if (url.startsWith("//")) url = "https:" + url;
+    return url;
+  }
+
+  function flattenSsrItems(obj) {
+    let items = [];
+
+    if (!obj || typeof obj !== "object") {
+      return items;
+    }
+
+    if (Array.isArray(obj)) {
+      obj.forEach(entry => {
+        items = items.concat(flattenSsrItems(entry));
+      });
+      return items;
+    }
+
+    if (obj.ssrCode) {
+      items.push(obj);
+      return items;
+    }
+
+    Object.values(obj).forEach(value => {
+      items = items.concat(flattenSsrItems(value));
+    });
+    return items;
+  }
+
+  function isMealItem(item) {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    const name = String(item.ssrName || item.name || "").toLowerCase();
+    const code = String(item.ssrCode || "").toLowerCase();
+    const description = String(item.description || "").toLowerCase();
+
+    if (/bag|baggage|luggage|seat|insurance|extra|assurance/.test(name) || /bag|baggage|luggage/.test(code) || /bag|baggage|luggage/.test(description)) {
+      return false;
+    }
+
+    return Boolean(
+      item.mealPreference ||
+      item.imageUrl ||
+      item.mealThumbnailImage ||
+      item.nutritionFacts ||
+      item.beverageIncluded !== undefined ||
+      /meal|burger|biryani|pizza|chocolates|sandwich|wrap|box|platter/.test(name)
+    );
+  }
+
+  // Extract segment keys from an SSR journey without depending on one exact
+  // backend nesting shape (segmentKey, segment_key, segmentKeys, segment_keys).
+  function extractSegmentKeysFromJourney(journey) {
+    const found = new Set();
+
+    function walk(value) {
+      if (!value || typeof value !== "object") return;
+
+      if (Array.isArray(value)) {
+        value.forEach(walk);
+        return;
+      }
+
+      Object.entries(value).forEach(([key, child]) => {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        if (
+          normalizedKey === "segmentkey" ||
+          normalizedKey === "segmentkeys"
+        ) {
+          const values = Array.isArray(child) ? child : [child];
+          values.forEach(v => {
+            if (v && typeof v !== "object") {
+              String(v)
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean)
+                .forEach(v => found.add(v));
+            }
+          });
+        }
+
+        walk(child);
+      });
+    }
+
+    walk(journey);
+    return Array.from(found);
+  }
+
+  function mapMealsToFlights(data, parsedMeals) {
+    const journeys = data?.data?.ssrAvailability?.journeySsrs || [];
+    const map = {};
+
+    flightOptions.forEach((flight, index) => {
+      map[getFlightStorageKey(index)] = [];
+    });
+
+    if (!flightOptions.length) {
+      return map;
+    }
+
+    // One flight: there is no ambiguity, so all SSR meals belong to it.
+    if (flightOptions.length === 1) {
+      map[getFlightStorageKey(0)] = parsedMeals.slice();
+      return map;
+    }
+
+    // First try exact journeyKey supplied in flightOptions.
+    journeys.forEach((journey, journeyIndex) => {
+      const journeyKey = normalizeKey(journey?.journeyKey);
+      const journeyMeals = parsedMeals.filter(
+        meal => normalizeKey(meal.journeyKey) === journeyKey
+      );
+
+      if (!journeyMeals.length) return;
+
+      let matchedIndex = -1;
+
+      if (journeyKey) {
+        matchedIndex = flightOptions.findIndex(
+          flight => normalizeKey(flight.journeyKey) === journeyKey
+        );
+      }
+
+      // Then match the SSR journey's segment key(s) to flightOptions.
+      if (matchedIndex < 0) {
+        const journeySegmentKeys = extractSegmentKeysFromJourney(journey);
+
+        matchedIndex = flightOptions.findIndex(flight => {
+          const flightSegmentKeys = getFlightSegmentKeys(flight);
+          return journeySegmentKeys.some(key => flightSegmentKeys.includes(key));
+        });
+      }
+
+      // If backend returned the same number/order of journeys as flight options,
+      // use index as the final deterministic fallback.
+      if (matchedIndex < 0 && journeys.length === flightOptions.length) {
+        matchedIndex = journeyIndex;
+      }
+
+      if (matchedIndex >= 0) {
+        const flightKey = getFlightStorageKey(matchedIndex);
+        map[flightKey] = (map[flightKey] || []).concat(journeyMeals);
+      }
+    });
+
+    // Remove duplicate SSR entries while preserving order.
+    Object.keys(map).forEach(flightKey => {
+      const seen = new Set();
+      map[flightKey] = map[flightKey].filter(meal => {
+        const key = [
+          meal.journeyKey,
+          meal.ssrCode,
+          meal.ssrKey,
+          meal.mealName
+        ].join("|");
+
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+
+    console.log("SSR meals mapped by flight:", map);
+    return map;
+  }
+
+  function parseSsrAvailabilityMeals(data) {
+    const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
+    const parsedMeals = [];
+
+    journeySsrs.forEach(journey => {
+      const journeyKey = journey?.journeyKey || "";
+      const allItems = flattenSsrItems(journey).filter(isMealItem);
+
+      allItems.forEach(item => {
+        if (!item || !item.ssrCode) return;
+
+        let passengerAvailability = [];
+        if (Array.isArray(item.passengerAvailability)) {
+          passengerAvailability = item.passengerAvailability;
+        } else if (item.passengerAvailability && typeof item.passengerAvailability === "object") {
+          passengerAvailability = [item.passengerAvailability];
+        }
+
+        let availability = passengerAvailability.find(p => passengerKeys.length === 0 || passengerKeys.includes(p.passengerKey));
+        if (!availability) {
+          availability = passengerAvailability[0] || {};
+        }
+
+        const priceValue = availability.price ?? availability.amount ?? item.price ?? 0;
+        const price = typeof priceValue === "number" ? priceValue : parseFloat(priceValue) || 0;
+
+        parsedMeals.push({
+          ssrCode: item.ssrCode,
+          ssrKey: availability.ssrKey || item.ssrKey || "",
+          journeyKey,
+          mealName: item.ssrName || item.name || item.ssrCode,
+          mealDescription: item.description || item.ssrName || item.name || "",
+          mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
+          nutritionFacts: item.nutritionFacts || item.nutrition || [],
+          beverageIncluded: item.beverageIncluded || false,
+          price,
+          mealTagInfo: item.mealTagInfo || item.mealTags || [],
+        });
+      });
+    });
+
+    return parsedMeals;
+  }
+
+  function getPrice(meal) {
+    if (typeof meal.price === "number") {
+      return meal.price;
+    }
+    return MEAL_PRICES[meal.mealName] || MEAL_PRICES["default"];
+  }
+
+  function getEnergy(meal) {
+    const nutrition = meal.nutritionFacts;
+
+    if (!nutrition) return "";
+
+    if (Array.isArray(nutrition)) {
+      const first = nutrition.find(Boolean);
+      if (!first) return "";
+
+      if (typeof first === "string" || typeof first === "number") {
+        return first;
+      }
+
+      return first.energy ??
+        first.energyValue ??
+        first.calories ??
+        first.calorie ??
+        "";
+    }
+
+    if (typeof nutrition === "object") {
+      return nutrition.energy ??
+        nutrition.energyValue ??
+        nutrition.calories ??
+        nutrition.calorie ??
+        "";
+    }
+
+    return "";
+  }
+
+  function apiHeaders() {
+    const headers = {
+      "Content-Type": "application/json",
+      "QP-BOT-SOURCE": qpBotSource,
+    };
+    if (authToken) headers["Authorization"] = authToken;
+    if (qpBotApiKey) headers["QP-BOT-API-KEY"] = qpBotApiKey;
+    return headers;
+  }
+
+  async function fetchMeals() {
+    mealsLoading = true;
+    meals = [];
+    mealsByFlight = {};
+    currentPage = 0;
+    render();
+
+    if (!(passengerKeys.length && authToken && qpBotApiKey)) {
+      console.warn("SSR availability request skipped: missing passengerKeys/authToken/qpBotApiKey.");
+      mealsLoading = false;
+      render();
+      return;
+    }
+
+    try {
+      const res = await fetch(SSR_AVAILABILITY_URL, {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify(passengerKeys),
+      });
+
+      if (!res.ok) {
+        console.warn("SSR availability fetch failed with status", res.status);
+        meals = [];
+        mealsByFlight = {};
+        mealsLoading = false;
+        render();
+        return;
+      }
+
+      const data = await res.json();
+
+      const parsedMeals = parseSsrAvailabilityMeals(data);
+      meals = parsedMeals;
+      mealsByFlight = mapMealsToFlights(data, parsedMeals);
+
+      if (!meals.length) {
+        console.warn("SSR availability returned no meals.", data);
+      }
+
+      mealsLoading = false;
+      render();
+    } catch (err) {
+      console.warn("SSR availability fetch failed.", err);
+      meals = [];
+      mealsByFlight = {};
+      mealsLoading = false;
+      render();
+    }
+  }
+
+
+  let activeMealCategory = "all";
+  let onlyVeg = false;
+
+  function mealMatchesCategory(meal, category) {
+    if (category === "all") return true;
+    const text = [
+      meal.mealName,
+      meal.mealDescription,
+      meal.mealPreference,
+      ...(meal.mealTagInfo || []).map(t => t.mealTag || "")
+    ].join(" ").toLowerCase();
+
+    const rules = {
+      gourmet: /gourmet|premium|special/,
+      kids: /kid|child/,
+      desserts: /dessert|cake|brownie|sweet|chocolate|cookie|ice.?cream/,
+      refreshments: /refreshment|snack|tea|coffee|juice/,
+      ready: /ready.?to.?eat|wrap|sandwich|meal box/,
+      salads: /salad/,
+      beverages: /beverage|drink|juice|water|coffee|tea/
+    };
+    return rules[category] ? rules[category].test(text) : true;
+  }
+
+  function mealIsVeg(meal) {
+    const text = [
+      meal.mealName,
+      meal.mealDescription,
+      meal.mealPreference,
+      ...(meal.mealTagInfo || []).map(t => t.mealTag || "")
+    ].join(" ").toLowerCase();
+
+    if (/\bnon.?veg\b|\bchicken\b|\bmutton\b|\bfish\b|\begg\b|\bmeat\b|\bseafood\b/.test(text)) return false;
+    return /\bveg\b|\bvegetarian\b|\bvegan\b|\bpaneer\b|\bdal\b|\bfruit\b|\bsalad\b/.test(text);
+  }
+
+  function getFilteredMeals(flightKey = getCurrentFlightKey()) {
+    const source = getMealsForFlightKey(flightKey);
+    const search = (document.getElementById("mealSearch")?.value || "").trim().toLowerCase();
+
+    return source.filter(meal => {
+      const text = [meal.mealName, meal.mealDescription, meal.mealPreference]
+        .join(" ").toLowerCase();
+      const matchesSearch = !search || text.includes(search);
+      const matchesCategory = mealMatchesCategory(meal, activeMealCategory);
+      const matchesVeg = !onlyVeg || mealIsVeg(meal);
+      return matchesSearch && matchesCategory && matchesVeg;
+    });
+  }
+
+  function setMealCategory(category, button) {
+    activeMealCategory = category;
+    currentPage = 0;
+    document.querySelectorAll(".filter-pill").forEach(el => el.classList.remove("active"));
+    if (button) button.classList.add("active");
+    render();
+  }
+
+  function toggleSearch() {
+    const wrap = document.getElementById("searchInputWrap");
+    const btn = document.getElementById("searchButton");
+    if (!wrap || !btn) return;
+    wrap.classList.toggle("show");
+    btn.classList.toggle("active", wrap.classList.contains("show"));
+    if (wrap.classList.contains("show")) {
+      document.getElementById("mealSearch")?.focus();
+    }
+  }
+
+  function applyMealFilters() {
+    currentPage = 0;
+    render();
+  }
+
+  function toggleVegFilter() {
+    onlyVeg = !onlyVeg;
+    const toggle = document.getElementById("vegToggle");
+    if (toggle) {
+      toggle.classList.toggle("on", onlyVeg);
+      toggle.setAttribute("aria-checked", String(onlyVeg));
+    }
+    currentPage = 0;
+    render();
+  }
+
+  function render() {
+    const container = document.getElementById("menu");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    // IMPORTANT:
+    // Empty meals while the API is still pending is NOT an empty result.
+    if (mealsLoading) {
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">Loading meals...</div>
+            <div class="meal-description">
+              Please wait while we fetch the available meals.
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderTravellerSelection();
+      renderPagination(0);
+      updateTotal();
+      return;
+    }
+
+    if (!meals.length) {
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">No meal options are available from the SSR API.</div>
+            <div class="meal-description">Please verify your booking and try again.</div>
+          </div>
+        </div>
+      `;
+
+      renderTravellerSelection();
+      renderPagination(0);
+      updateTotal();
+      return;
+    }
+
+    const flightKey = getCurrentFlightKey();
+    const currentMeals = getFilteredMeals(flightKey);
+
+    if (!currentMeals.length) {
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">No meal options are available for this flight.</div>
+            <div class="meal-description">Please select another flight or verify your booking.</div>
+          </div>
+        </div>
+      `;
+
+      renderTravellerSelection();
+      renderPagination(0);
+      updateTotal();
+      return;
+    }
+
+    const totalPages = Math.ceil(currentMeals.length / pageSize);
+
+    if (currentPage >= totalPages) {
+      currentPage = Math.max(0, totalPages - 1);
+    }
+
+    const start = currentPage * pageSize;
+    const pageItems = currentMeals.slice(start, start + pageSize);
+    const travellerQty = getCurrentTravellerQuantities();
+
+    pageItems.forEach((meal, i) => {
+      const mealKey = meal.ssrKey || meal.ssrCode || meal.mealName || `${start + i}`;
+      const qty = travellerQty[mealKey] || 0;
+      const price = getPrice(meal);
+      const energy = getEnergy(meal);
+      const beverageIncluded = meal.beverageIncluded;
+      const tags = meal.mealTagInfo || [];
+
+      const div = document.createElement("div");
+      div.className = "meal-item";
+
+      let tagsHtml = "";
+
+      if (meal.prebookLiner) {
+        tagsHtml += `<span class="meal-tag" style="background:#FF9800;color:white;">${meal.prebookLiner}</span>`;
+      }
+
+      tags.forEach(tag => {
+        tagsHtml += `
+          <span class="meal-tag"
+            style="background:${tag.mealTagColorCode || '#666'};color:${tag.mealTagTextColor || 'white'};">
+            ${tag.mealTag}
+          </span>
+        `;
+      });
+
+      div.innerHTML = `
+        <div class="meal-img-container">
+          <img class="meal-img"
+            src="${getImage(meal)}"
+            onerror="this.src='${FALLBACK_IMG}'"/>
+          ${beverageIncluded ? '<span class="beverage-badge">🥤 Beverage Included</span>' : ''}
+        </div>
+
+        <div class="meal-left">
+          <div class="meal-name">${meal.mealName}</div>
+          <div class="meal-description">${extractText(meal.mealDescription)}</div>
+          ${tagsHtml ? `<div class="meal-tags">${tagsHtml}</div>` : ''}
+          ${energy !== "" ? `<div class="nutrition-info">⚡ Energy: ${energy}</div>` : ''}
+          <div class="meal-price">₹${price}</div>
+        </div>
+
+        <div class="qty-box"></div>
+      `;
+
+      const qtyBox = div.querySelector(".qty-box");
+
+      const decreaseBtn = document.createElement("button");
+      decreaseBtn.type = "button";
+      decreaseBtn.className = "qty-btn";
+      decreaseBtn.disabled = qty === 0;
+      decreaseBtn.textContent = "−";
+      decreaseBtn.addEventListener("click", () => {
+        decrease(mealKey);
+      });
+
+      const countEl = document.createElement("div");
+      countEl.className = "qty-count";
+      countEl.textContent = qty;
+
+      const increaseBtn = document.createElement("button");
+      increaseBtn.type = "button";
+      increaseBtn.className = "qty-btn";
+      increaseBtn.disabled = qty >= MAX_QTY;
+      increaseBtn.textContent = "+";
+      increaseBtn.addEventListener("click", () => {
+        increase(mealKey);
+      });
+
+      qtyBox.appendChild(decreaseBtn);
+      qtyBox.appendChild(countEl);
+      qtyBox.appendChild(increaseBtn);
+      container.appendChild(div);
+    });
+
+    renderTravellerSelection();
+    renderPagination(totalPages);
+    updateTotal();
+  }
+
+  function renderPagination(totalPages) {
+    const controls = document.querySelector(".controls");
+    if (!controls) return;
+
+    const hasMultiplePages = totalPages > 1;
+    controls.style.display = hasMultiplePages ? "flex" : "none";
+
+    if (!hasMultiplePages) return;
+
+    const buttons = controls.querySelectorAll("button");
+    const prevBtn = buttons[0];
+    const nextBtn = buttons[1];
+
+    if (prevBtn) prevBtn.disabled = currentPage <= 0;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages - 1;
+  }
+
+  function increase(mealKey) {
+    const travellerQty = getCurrentTravellerQuantities();
+    if (!travellerQty[mealKey]) travellerQty[mealKey] = 0;
+    if (travellerQty[mealKey] < MAX_QTY) {
+      travellerQty[mealKey]++;
+    }
+    render();
+  }
+
+  function decrease(mealKey) {
+    const travellerQty = getCurrentTravellerQuantities();
+    if (travellerQty[mealKey] > 0) {
+      travellerQty[mealKey]--;
+    }
+    render();
+  }
+
+  function getTravellerItemCount(travellerIdx, flightKey = getCurrentFlightKey()) {
+    const travellerQty = quantities[flightKey]?.[travellerIdx] || {};
+    return Object.values(travellerQty).reduce((a, b) => a + b, 0);
+  }
+
+  function getTotalItems() {
+    const flightKey = getCurrentFlightKey();
+    let total = 0;
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      total += getTravellerItemCount(parseInt(t, 10), flightKey);
+    });
+    return total;
+  }
+
+  function getTotalMeals() {
+    const flightKey = getCurrentFlightKey();
+    let count = 0;
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerQty = quantities[flightKey][t] || {};
+      count += Object.keys(travellerQty).filter(i => travellerQty[i] > 0).length;
+    });
+    return count;
+  }
+
+  function getTotalAmount() {
+    const flightKey = getCurrentFlightKey();
+    let total = 0;
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerQty = quantities[flightKey][t] || {};
+      Object.keys(travellerQty).forEach(mealKey => {
+        if (travellerQty[mealKey] > 0) {
+          const meal = getMealsForFlightKey(flightKey).find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+          if (meal) {
+            total += getPrice(meal) * travellerQty[mealKey];
+          }
+        }
+      });
+    });
+    return total;
+  }
+
+  function updateTotal() {
+    const totalItems = getTotalItems();
+    const totalMeals = getTotalMeals();
+    const totalAmount = getTotalAmount();
+
+    document.getElementById("totalItems").textContent = totalItems;
+    document.getElementById("totalMeals").textContent = totalMeals;
+    document.getElementById("totalAmount").textContent = totalAmount;
+
+    const btn = document.getElementById("confirmBtn");
+    btn.disabled = totalItems === 0;
+    btn.textContent = totalItems > 0 ? `Confirm Order (${totalItems} items) - ₹${totalAmount}` : "Confirm Order";
+  }
+
+  function nextPage() {
+    const currentMeals = getFilteredMeals(getCurrentFlightKey());
+    if ((currentPage + 1) * pageSize < currentMeals.length) {
+      currentPage++;
+      render();
+    }
+  }
+
+  function prevPage() {
+    if (currentPage > 0) {
+      currentPage--;
+      render();
+    }
+  }
+
+  // -------------------------
+  // Webview -> Bot handoff
+  // Mirrors the SHL contract: build a || delimited key=value string,
+  // escape commas/&, URL-encode it, wrap it in the Start Chatting envelope,
+  // and postMessage it as a string to the Haptik container.
+  // Each meal line item now also carries the traveller name it belongs to:
+  //   traveller:mealName:qty:price  (joined by "~")
+  // -------------------------
+  function sendOrderToBot(orderData) {
+    const mealsEncoded = orderData.meals
+      .map(m => {
+        if (m.ssrCode) {
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
+        }
+        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
+      })
+      .join(",");
+
+    let data =
+      "pnr=" + orderData.pnr +
+      "||lastname=" + orderData.lastname +
+      "||email=" + orderData.email +
+      "||origin=" + orderData.origin +
+      "||destination=" + orderData.destination +
+      "||departure=" + orderData.departure +
+      "||travellers=" + orderData.travellers +
+      "||flight_segment_key=" + orderData.flight_segment_key +
+      "||segment_keys=" + (orderData.segment_keys || orderData.flight_segment_key || "") +
+      "||selected_travellers=" + orderData.selected_travellers +
+      "||travellerNames=" + (orderData.travellerNames || bookingContext.travellerNames.join(",")) +
+      "||selected_meals=" + mealsEncoded +
+      "||capture_meal_selection=" + mealsEncoded +
+      "||selected_meal=" + (orderData.selected_meal || mealsEncoded) +
+      " ";
+
+    data = data.split(",").join(";;");
+    data = data.split("&").join("^%");
+    data = encodeURIComponent(data);
+
+    const text = "{api_name:akasa_meal,data:" + data + "}";
+
+    if (window.parent) {
+      window.parent.postMessage(
+        `http://haptik-webview//perform-action?action=close&message=${text}&message_type=0`,
+        "*"
+      );
+    }
+  }
+
+  function getSelectedMealsAcrossFlights() {
+    const selectedMeals = [];
+    Object.keys(quantities).forEach(flightKey => {
+      const flightMeals = getMealsForFlightKey(flightKey);
+      Object.keys(quantities[flightKey] || {}).forEach(t => {
+        const travellerIdx = parseInt(t, 10);
+        const travellerQty = quantities[flightKey][t] || {};
+        const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
+
+        Object.keys(travellerQty).forEach(mealKey => {
+          const qty = travellerQty[mealKey];
+          if (qty > 0) {
+            const meal = flightMeals.find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+            if (!meal) return;
+            selectedMeals.push({
+              traveller: travellerName,
+              travellerIndex: travellerIdx,
+              name: meal.mealName,
+              qty,
+              price: getPrice(meal),
+              ssrCode: meal.ssrCode || meal.mealSsrCode || "",
+              ssrKey: meal.ssrKey || ""
+            });
+          }
+        });
+      });
+    });
+    return selectedMeals;
+  }
+
+  function getSelectedTravellerValues() {
+    const values = new Set();
+    Object.keys(quantities).forEach(flightKey => {
+      Object.keys(quantities[flightKey] || {}).forEach(t => {
+        if (getTravellerItemCount(parseInt(t, 10), flightKey) > 0) {
+          values.add(parseInt(t, 10) + 1);
+        }
+      });
+    });
+    if (!values.size) {
+      values.add(currentTraveller + 1);
+    }
+    return Array.from(values).sort((a, b) => a - b);
+  }
+
+  async function confirmOrder() {
+    const selectedMeals = getSelectedMealsAcrossFlights();
+    const selectedTravellerValues = getSelectedTravellerValues();
+
+    if (!selectedMeals.length) {
+      alert("Select at least one item");
+      return;
+    }
+
+    const orderData = {
+      pnr: bookingContext.pnr,
+      lastname: bookingContext.lastname,
+      email: bookingContext.email,
+      origin: bookingContext.origin,
+      destination: bookingContext.destination,
+      departure: bookingContext.departure,
+      travellers: bookingContext.travellers,
+      flight_segment_key: selectedFlightSegmentKey || (segmentKeys[0] || ""),
+      segment_keys: getAllSegmentKeys().join(","),
+      selected_travellers: selectedTravellerValues.join(","),
+      travellerNames: bookingContext.travellerNames.join(","),
+      meals: selectedMeals,
+      selected_meal: selectedMeals.map(m => {
+        if (m.ssrCode) {
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
+        }
+        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
+      }).join(","),
+      totalItems: selectedMeals.reduce((sum, item) => sum + item.qty, 0),
+      totalAmount: selectedMeals.reduce((sum, item) => sum + item.qty * item.price, 0)
+    };
+
+    document.getElementById("mainContent").style.display = "none";
+    document.querySelector(".total-section").style.display = "none";
+    document.getElementById("successScreen").style.display = "flex";
+
+    setTimeout(() => {
+      sendOrderToBot(orderData);
+    }, 2000);
+  }
+
+  renderBookingContext();
+  fetchMeals();
+  </script>
+
+  </body>
+  </html>
