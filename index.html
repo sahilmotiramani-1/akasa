@@ -1,91 +1,647 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Meal Selection</title>
-<style>
-:root{--orange:#ff6b00;--purple:#5b1fd1;--text:#252525;--muted:#6b6b6b;--border:#e8e8e8;--bg:#f5f5f5}
-*{box-sizing:border-box}
-body{margin:0;padding:16px;background:var(--bg);font-family:Arial,Segoe UI,sans-serif;color:var(--text)}
-button,select{font:inherit}
-.header-title{text-align:center;font-size:24px;font-weight:700;margin:4px 0 16px}
-.flight-info,.meal-card{background:#fff;border:1px solid var(--border);border-radius:14px}
-.flight-info{padding:16px;margin-bottom:16px}
-.flight-header{display:flex;justify-content:space-between;align-items:center;gap:16px}
-.flight-route{font-size:18px;font-weight:700}.flight-departure{font-size:13px;color:var(--muted);margin-top:5px}
-.selector-row{display:flex;gap:12px;margin-top:14px}.selector{flex:1}.selector label{display:block;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;margin-bottom:6px}
-select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;background:#fafafa;color:#222}
-.menu-container{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.meal-card{overflow:hidden;padding:12px}.meal-main{display:grid;grid-template-columns:215px 1fr;gap:14px}
-.meal-img-container{position:relative}.meal-img{display:block;width:100%;height:248px;object-fit:cover;border-radius:10px}
-.food-type{position:absolute;top:8px;right:8px;width:21px;height:21px;border:2px solid currentColor;background:#fff;display:grid;place-items:center}
-.food-type.veg{color:#168344}.food-type.nonveg{color:#d6402e}.food-type.veg:after{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}.food-type.nonveg:after{content:"";width:8px;height:8px;background:currentColor;clip-path:polygon(50% 0,100% 100%,0 100%)}
-.beverage-badge{position:absolute;bottom:0;left:0;right:0;padding:5px;text-align:center;background:var(--purple);color:#fff;font-size:12px;font-weight:700;border-radius:0 0 10px 10px}
-.meal-content{min-width:0;display:flex;flex-direction:column}.meal-tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}.meal-tag{padding:4px 8px;border-radius:4px;background:var(--orange);color:#fff;font-size:11px;font-weight:700}
-.meal-name{font-size:17px;font-weight:700;margin:0 0 7px}.meal-description{font-size:13px;line-height:1.45;color:#555;margin-bottom:12px}
-.meal-meta{font-size:13px;color:#555;margin-bottom:7px}.meal-meta strong{color:#333}.allergens{font-size:12px;color:#666;line-height:1.4}
-.meal-footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:14px}
-.add-btn,.qty-btn,.confirm-btn,.controls button{border:0;background:var(--orange);color:#fff;font-weight:700;cursor:pointer}
-.add-btn{padding:10px 18px;border-radius:9px}.add-btn:disabled{background:#ccc;cursor:not-allowed}
-.qty-box{display:flex;align-items:center;gap:8px}.qty-btn{width:32px;height:32px;border-radius:8px;font-size:20px;line-height:1}.qty-btn:disabled{background:#ccc;cursor:not-allowed}.qty-count{min-width:20px;text-align:center;font-weight:700}
-.nutrition-toggle{margin-top:12px;width:100%;padding:9px 2px;border:0;border-top:1px solid var(--border);background:#fff;color:#5b1fd1;text-align:left;font-weight:700;cursor:pointer}
-.nutrition-panel{border:1px solid #ffd9c4;border-radius:12px;padding:12px;margin-top:6px;background:#fff}
-.nutrition-title{font-size:18px;font-weight:700;margin-bottom:10px}.nutrition-head,.nutrition-row{display:grid;grid-template-columns:1.5fr 1fr .7fr;gap:10px;align-items:center}
-.nutrition-head{padding:8px 0;border-top:2px solid var(--orange);border-bottom:1px solid #ffd9c4;font-size:12px;font-weight:700;color:#555}
-.nutrition-row{padding:8px 0;border-bottom:1px solid #f0d9cd;font-size:13px}.nutrition-row:last-child{border-bottom:0}.nutrition-value{font-weight:700}.nutrition-rda{text-align:left}
-.nutrition-note{font-size:11px;color:#777;margin-top:9px;line-height:1.4}
-.controls{display:flex;justify-content:center;gap:8px;margin:16px 0}.controls button{padding:9px 18px;border-radius:8px}.controls button:disabled{background:#ccc;cursor:not-allowed}
-.total-section{position:fixed;left:0;right:0;bottom:0;background:#fff;padding:12px 16px;box-shadow:0 -3px 14px rgba(0,0,0,.12);z-index:20}
-.total-details{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.total-items{font-size:13px;color:#666}.total-amount{font-size:20px;font-weight:700}
-.confirm-btn{width:100%;padding:13px;border-radius:10px;font-size:15px}.confirm-btn:disabled{background:#ccc;cursor:not-allowed}.body-padding{height:105px}
-.empty{grid-column:1/-1;padding:28px;text-align:center;background:#fff;border-radius:12px;color:#666}
-.success-screen{display:none;position:fixed;inset:0;background:#fff;z-index:50;align-items:center;justify-content:center;flex-direction:column}.success-icon{font-size:56px}
-@media(max-width:900px){.menu-container{grid-template-columns:1fr}}
-@media(max-width:620px){body{padding:10px}.selector-row{flex-direction:column}.meal-main{grid-template-columns:120px 1fr}.meal-img{height:150px}.meal-name{font-size:15px}.meal-description{font-size:12px}.meal-footer{align-items:flex-end}.nutrition-head,.nutrition-row{grid-template-columns:1.3fr 1fr .6fr;font-size:12px}}
-</style>
-</head>
-<body>
-<div id="mainContent">
-  <div class="header-title">MEAL SELECTION</div>
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <title>Meal Selection</title>
 
-  <section class="flight-info">
-    <div class="flight-header">
-      <div>
-        <div class="flight-route" id="flightRoute">✈️ Loading flight...</div>
-        <div class="flight-departure" id="flightDeparture"></div>
+  <style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f3f3f3;
+    padding: 15px;
+    margin: 0;
+  }
+
+
+  .header-title {
+    display: none;
+  }
+
+  .flight-info {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    margin: 0 0 22px 0;
+  }
+
+  .flight-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .flight-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 340px;
+    max-width: 520px;
+    padding: 13px 18px;
+    background: #fff;
+    border: 2px solid #9b4e16;
+    border-radius: 18px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+
+  .flight-icon {
+    width: 42px;
+    height: 42px;
+    border: 2px solid #9b4e16;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9b4e16;
+    font-size: 20px;
+    flex-shrink: 0;
+    background: #fff;
+  }
+
+  .flight-card-main {
+    min-width: 0;
+  }
+
+  .flight-card-title {
+    font-size: 17px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #292929;
+    margin-bottom: 5px;
+  }
+
+  .flight-card-subtitle {
+    font-size: 14px;
+    line-height: 1.2;
+    color: #555;
+    font-weight: 600;
+  }
+
+  .flight-route {
+    font-size: 17px;
+    font-weight: 700;
+    color: #292929;
+    margin: 0;
+  }
+
+  .flight-departure {
+    font-size: 12px;
+    color: #777;
+    margin-top: 4px;
+  }
+
+  .flight-selector-wrap {
+    margin: 0;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .flight-selector-label,
+  .traveller-selection-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #777;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+
+  .flight-select {
+    width: 100%;
+    min-width: 300px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    background: #fff;
+  }
+
+  .traveller-selection-wrap {
+    display: none;
+  }
+
+  .traveller-select-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .traveller-select {
+    font-size: 14px;
+    color: #1a1a2e;
+    background: #f8f8f8;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: 1px solid #eee;
+    cursor: pointer;
+    min-width: 160px;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 6px 18px 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .search-box {
+    width: 96px;
+    height: 48px;
+    flex: 0 0 96px;
+    border-radius: 26px;
+    background: #f3f3f3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #252525;
+    cursor: pointer;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+  }
+
+  .search-box.active {
+    border-color: #ff6500;
+    background: #fff;
+  }
+
+  .search-box svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .search-input-wrap {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 220px;
+  }
+
+  .search-input-wrap.show {
+    display: flex;
+  }
+
+  .search-input {
+    width: 100%;
+    height: 46px;
+    box-sizing: border-box;
+    border: 1px solid #ddd;
+    border-radius: 24px;
+    padding: 0 16px;
+    outline: none;
+    font-size: 14px;
+    background: #fff;
+  }
+
+  .filter-pill {
+    flex: 0 0 auto;
+    height: 48px;
+    padding: 0 23px;
+    border: 1px solid transparent;
+    border-radius: 26px;
+    background: #f3f3f3;
+    color: #666;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .filter-pill.active {
+    background: #fff;
+    border-color: #ff6500;
+    color: #222;
+  }
+
+  .veg-filter {
+    margin-left: auto;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #333;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .veg-toggle {
+    width: 58px;
+    height: 36px;
+    border-radius: 20px;
+    background: #dedede;
+    position: relative;
+    cursor: pointer;
+    transition: .2s;
+  }
+
+  .veg-toggle::after {
+    content: "";
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    top: 2px;
+    left: 2px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    transition: .2s;
+  }
+
+  .veg-toggle.on {
+    background: #ff6500;
+  }
+
+  .veg-toggle.on::after {
+    transform: translateX(22px);
+  }
+
+  .meal-info {
+    margin: 0 6px 30px 6px;
+  }
+
+  .meal-info p {
+    margin: 0 0 12px;
+    font-size: 16px;
+    line-height: 1.55;
+    color: #3e3e3e;
+  }
+
+  .menu-container {
+    margin-top: 0;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .menu-container {
+    margin-top: 15px;
+    background: white;
+    border-radius: 12px;
+  }
+
+  .meal-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    align-items: flex-start;
+  }
+
+  .meal-item {
+    background: #fff;
+    border: 1px solid #eeeeee;
+    border-radius: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  }
+
+  .meal-img-container {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .meal-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    object-fit: cover;
+  }
+
+  .beverage-badge {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #4CAF50;
+    color: white;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .meal-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .meal-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .meal-description {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+
+  .meal-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .meal-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  .nutrition-info {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+    padding: 5px 8px;
+    background: #f8f8f8;
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  .meal-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff6a3d;
+    margin-top: 5px;
+  }
+
+  .qty-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .qty-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: #ff6a3d;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+
+  .qty-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .qty-count {
+    min-width: 25px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .controls {
+    text-align: center;
+    margin-top: 15px;
+  }
+
+  .controls button {
+    padding: 10px 25px;
+    margin: 5px;
+    border: none;
+    border-radius: 8px;
+    background: #ff6a3d;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .controls button:hover {
+    background: #e55a2b;
+  }
+
+  .total-section {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 15px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 100;
+  }
+
+  .total-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .total-items {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .total-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+
+  .confirm-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: #ff6a3d;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .confirm-btn:hover {
+    background: #e55a2b;
+  }
+
+  .confirm-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .body-padding {
+    padding-bottom: 120px;
+  }
+
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #fff;
+    color: #2d2d2d;
+    padding: 16px 30px 15px;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .body-padding {
+    padding-bottom: 120px;
+  }
+
+  @media (max-width: 900px) {
+    body {
+      padding: 14px 16px;
+    }
+
+    .toolbar {
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .veg-filter {
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .flight-card {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .toolbar {
+      flex-wrap: nowrap;
+    }
+
+    .veg-filter {
+      display: none;
+    }
+
+    .filter-pill {
+      padding: 0 17px;
+      font-size: 14px;
+    }
+
+    .search-box {
+      flex-basis: 64px;
+      width: 64px;
+    }
+
+    .meal-info p {
+      font-size: 14px;
+    }
+  }
+
+  /* success screen */
+  .success-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: white;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .success-icon {
+    font-size: 60px;
+    color: green;
+  }
+  </style>
+  </head>
+
+  <body>
+
+  <div id="mainContent">
+    <div class="header-title">MEAL SELECTION</div>
+
+    <div class="flight-info">
+      <div class="flight-header">
+        <div class="flight-card">
+          <div class="flight-icon">✈</div>
+          <div class="flight-card-main">
+            <div class="flight-card-title" id="flightRoute">Loading flight...</div>
+            <div class="flight-card-subtitle" id="flightDeparture"></div>
+          </div>
+        </div>
+        <div id="flightSelectorWrap" class="flight-selector-wrap"></div>
+        <div id="travellerSelectionWrap" class="traveller-selection-wrap"></div>
       </div>
     </div>
-    <div class="selector-row">
-      <div id="flightSelectorWrap" class="selector"></div>
-      <div id="travellerSelectionWrap" class="selector"></div>
+
+    <div class="toolbar">
+      <div class="search-box" id="searchButton" onclick="toggleSearch()" title="Search meals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="10.8" cy="10.8" r="6.8"></circle>
+          <path d="M16 16l5 5"></path>
+        </svg>
+      </div>
+      <div class="search-input-wrap" id="searchInputWrap">
+        <input id="mealSearch" class="search-input" type="search" placeholder="Search meals..." oninput="applyMealFilters()">
+      </div>
+      <button class="filter-pill active" data-filter="all" onclick="setMealCategory('all', this)">All Meals</button>
+      <button class="filter-pill" data-filter="gourmet" onclick="setMealCategory('gourmet', this)">Gourmet</button>
+      <button class="filter-pill" data-filter="kids" onclick="setMealCategory('kids', this)">Kids</button>
+      <button class="filter-pill" data-filter="desserts" onclick="setMealCategory('desserts', this)">Desserts</button>
+      <button class="filter-pill" data-filter="refreshments" onclick="setMealCategory('refreshments', this)">Refreshments</button>
+      <button class="filter-pill" data-filter="ready" onclick="setMealCategory('ready', this)">Ready to Eat</button>
+      <button class="filter-pill" data-filter="salads" onclick="setMealCategory('salads', this)">Salads</button>
+      <button class="filter-pill" data-filter="beverages" onclick="setMealCategory('beverages', this)">Beverages</button>
+      <div class="veg-filter">
+        <span>Only Veg</span>
+        <div class="veg-toggle" id="vegToggle" onclick="toggleVegFilter()" role="switch" aria-checked="false"></div>
+      </div>
     </div>
-  </section>
 
-  <div id="menu" class="menu-container"></div>
+    <div class="meal-info">
+      <p>All meals include a beverage. Kindly select your preferred beverage onboard.</p>
+      <p>If we are unable to serve your pre-booked meal, we will provide you with an alternate option based on availability on board, or a full refund for any meals you have purchased.</p>
+    </div>
 
-  <div class="controls">
-    <button id="prevBtn" onclick="prevPage()">← Prev</button>
-    <span id="pageInfo" style="padding:9px 6px;color:#666;font-size:13px"></span>
-    <button id="nextBtn" onclick="nextPage()">Next →</button>
+    <div id="menu" class="menu-container"></div>
+
+    <div class="controls">
+      <button onclick="prevPage()">← Prev</button>
+      <button onclick="nextPage()">Next →</button>
+    </div>
+
+    <div class="body-padding"></div>
   </div>
-  <div class="body-padding"></div>
-</div>
 
-<div class="total-section">
-  <div class="total-details">
-    <div class="total-items"><span id="totalItems">0</span> items (<span id="totalMeals">0</span> meals)</div>
-    <div class="total-amount">₹<span id="totalAmount">0</span></div>
+  <div class="total-section">
+    <div class="total-details">
+      <div class="total-items"><span id="totalItems">0</span> items (<span id="totalMeals">0</span> meals)</div>
+      <div class="total-amount">₹<span id="totalAmount">0</span></div>
+    </div>
+    <button id="confirmBtn" class="confirm-btn" onclick="confirmOrder()">
+      Confirm Order
+    </button>
   </div>
-  <button id="confirmBtn" class="confirm-btn" onclick="confirmOrder()">Confirm Order</button>
-</div>
 
-<div id="successScreen" class="success-screen">
-  <div class="success-icon">✅</div>
-  <h2>Order Confirmed!</h2>
-</div>
+  <div id="successScreen" class="success-screen">
+    <div class="success-icon">✅</div>
+    <h2>Order Confirmed!</h2>
+  </div>
 
-<script>
+  <script>
   const SSR_AVAILABILITY_URL = "https://staging-agents-relay-uat.qp.akasaair.com/bgws/api/ibe/agents/ssrAvailabilityV2";
   const STORYBLOK_API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
   const DEFAULT_API_SOURCE = "CHATBOTWEB";
@@ -343,10 +899,7 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
     wrap.appendChild(select);
   }
 
-
-  // -------------------------
-  // Meal data helpers
-  // -------------------------
+  // extract text
   function extractText(field) {
     if (!field) return "";
     if (typeof field === "string") return field;
@@ -354,12 +907,6 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
     if (field.text) return field.text;
     if (field.content) return field.content.map(extractText).join(" ");
     return "";
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, ch => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[ch]));
   }
 
   function getImage(meal) {
@@ -370,163 +917,235 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
   }
 
   function flattenSsrItems(obj) {
-    if (!obj || typeof obj !== "object") return [];
-    if (Array.isArray(obj)) return obj.flatMap(flattenSsrItems);
-    if (obj.ssrCode) return [obj];
-    return Object.values(obj).flatMap(flattenSsrItems);
+    let items = [];
+
+    if (!obj || typeof obj !== "object") {
+      return items;
+    }
+
+    if (Array.isArray(obj)) {
+      obj.forEach(entry => {
+        items = items.concat(flattenSsrItems(entry));
+      });
+      return items;
+    }
+
+    if (obj.ssrCode) {
+      items.push(obj);
+      return items;
+    }
+
+    Object.values(obj).forEach(value => {
+      items = items.concat(flattenSsrItems(value));
+    });
+    return items;
   }
 
   function isMealItem(item) {
-    if (!item || typeof item !== "object") return false;
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
     const name = String(item.ssrName || item.name || "").toLowerCase();
     const code = String(item.ssrCode || "").toLowerCase();
     const description = String(item.description || "").toLowerCase();
-    if (/bag|baggage|luggage|seat|insurance|extra|assurance/.test(name) ||
-        /bag|baggage|luggage/.test(code) ||
-        /bag|baggage|luggage/.test(description)) return false;
+
+    if (/bag|baggage|luggage|seat|insurance|extra|assurance/.test(name) || /bag|baggage|luggage/.test(code) || /bag|baggage|luggage/.test(description)) {
+      return false;
+    }
+
     return Boolean(
-      item.mealPreference || item.imageUrl || item.mealThumbnailImage ||
-      item.nutritionFacts || item.beverageIncluded !== undefined ||
-      /meal|burger|biryani|pizza|chocolates|sandwich|wrap|box|platter|croissant/.test(name)
+      item.mealPreference ||
+      item.imageUrl ||
+      item.mealThumbnailImage ||
+      item.nutritionFacts ||
+      item.beverageIncluded !== undefined ||
+      /meal|burger|biryani|pizza|chocolates|sandwich|wrap|box|platter/.test(name)
     );
   }
 
   function parseSsrAvailabilityMeals(data) {
-    const journeys = data?.data?.ssrAvailability?.journeySsrs || [];
-    const parsed = [];
+    const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
+    const parsedMeals = [];
 
-    journeys.forEach(journey => {
+    journeySsrs.forEach(journey => {
       const journeyKey = journey?.journeyKey || "";
-      flattenSsrItems(journey).filter(isMealItem).forEach(item => {
-        if (!item.ssrCode) return;
+      const allItems = flattenSsrItems(journey).filter(isMealItem);
 
-        let availability = item.passengerAvailability;
-        if (Array.isArray(availability)) {
-          availability = availability.find(p => !passengerKeys.length || passengerKeys.includes(p.passengerKey)) || availability[0];
-        } else {
-          availability = availability || {};
+      allItems.forEach(item => {
+        if (!item || !item.ssrCode) return;
+
+        let passengerAvailability = [];
+        if (Array.isArray(item.passengerAvailability)) {
+          passengerAvailability = item.passengerAvailability;
+        } else if (item.passengerAvailability && typeof item.passengerAvailability === "object") {
+          passengerAvailability = [item.passengerAvailability];
         }
 
-        const rawPrice = availability?.price ?? availability?.amount ?? item.price ?? 0;
-        const price = typeof rawPrice === "number" ? rawPrice : parseFloat(rawPrice) || 0;
+        let availability = passengerAvailability.find(p => passengerKeys.length === 0 || passengerKeys.includes(p.passengerKey));
+        if (!availability) {
+          availability = passengerAvailability[0] || {};
+        }
 
-        parsed.push({
-          ssrCode:item.ssrCode,
-          ssrKey:availability?.ssrKey || item.ssrKey || "",
+        const priceValue = availability.price ?? availability.amount ?? item.price ?? 0;
+        const price = typeof priceValue === "number" ? priceValue : parseFloat(priceValue) || 0;
+
+        parsedMeals.push({
+          ssrCode: item.ssrCode,
+          ssrKey: availability.ssrKey || item.ssrKey || "",
           journeyKey,
-          mealName:item.ssrName || item.name || item.ssrCode,
-          mealDescription:item.description || item.ssrName || item.name || "",
-          mealThumbnailImage:item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
-          nutritionFacts:item.nutritionFacts || [],
-          beverageIncluded:Boolean(item.beverageIncluded),
+          mealName: item.ssrName || item.name || item.ssrCode,
+          mealDescription: item.description || item.ssrName || item.name || "",
+          mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
+          nutritionFacts: item.nutritionFacts || [],
+          beverageIncluded: item.beverageIncluded || false,
           price,
-          mealType:item.mealType || "",
-          allergens:item.allergens || "",
-          prebookLiner:item.prebookLiner || "",
-          calorieAndGramLiner:item.calorieAndGramLiner || "",
-          mealTagInfo:item.mealTagInfo || []
+          mealTagInfo: [],
         });
       });
     });
-    return parsed;
+
+    return parsedMeals;
   }
 
-  // Storyblok contains the presentation/nutrition metadata used by the meal cards.
+  function getPrice(meal) {
+    if (typeof meal.price === "number") {
+      return meal.price;
+    }
+    return MEAL_PRICES[meal.mealName] || MEAL_PRICES["default"];
+  }
+
+  function getEnergy(meal) {
+    const nutrition = meal.nutritionFacts && meal.nutritionFacts[0];
+    return nutrition ? nutrition.energy : "";
+  }
+
   function apiHeaders() {
     const headers = {
       "Content-Type": "application/json",
-      "QP-BOT-SOURCE": qpBotSource
+      "QP-BOT-SOURCE": qpBotSource,
     };
     if (authToken) headers["Authorization"] = authToken;
     if (qpBotApiKey) headers["QP-BOT-API-KEY"] = qpBotApiKey;
     return headers;
   }
 
-  async function fetchStoryblokMeals() {
-    try {
-      const res = await fetch(STORYBLOK_API_URL);
-      if (!res.ok) return {};
-      const data = await res.json();
-      const body = data?.story?.content?.body || [];
-      return Object.fromEntries(
-        body.filter(x => x?.mealSsrCode).map(x => [x.mealSsrCode, x])
-      );
-    } catch (err) {
-      console.warn("Storyblok meal metadata fetch failed.", err);
-      return {};
+  async function fetchMeals() {
+    if (passengerKeys.length && authToken && qpBotApiKey) {
+      try {
+        const res = await fetch(SSR_AVAILABILITY_URL, {
+          method: "POST",
+          headers: apiHeaders(),
+          body: JSON.stringify(passengerKeys),
+        });
+
+        if (!res.ok) {
+          console.warn("SSR availability fetch failed with status", res.status);
+          meals = [];
+          render();
+          return;
+        }
+
+        const data = await res.json();
+        meals = parseSsrAvailabilityMeals(data);
+        if (!meals.length) {
+          console.warn("SSR availability returned no meals.");
+        }
+
+        render();
+        return;
+      } catch (err) {
+        console.warn("SSR availability fetch failed.", err);
+      }
     }
+
+    meals = [];
+    render();
   }
 
-  function mergeMealMetadata(ssrMeals, metadata) {
-    return ssrMeals.map(meal => {
-      const meta = metadata[meal.ssrCode] || {};
-      return {
-        ...meal,
-        ...meta,
-        ssrCode:meal.ssrCode,
-        ssrKey:meal.ssrKey,
-        journeyKey:meal.journeyKey,
-        price:meal.price,
-        mealName:meta.mealName || meal.mealName,
-        mealDescription:meta.mealDescription || meal.mealDescription,
-        mealThumbnailImage:meta.mealThumbnailImage || meal.mealThumbnailImage,
-        nutritionFacts:meta.nutritionFacts?.length ? meta.nutritionFacts : meal.nutritionFacts,
-        beverageIncluded:meta.beverageIncluded ?? meal.beverageIncluded
-      };
+
+  let activeMealCategory = "all";
+  let onlyVeg = false;
+
+  function mealMatchesCategory(meal, category) {
+    if (category === "all") return true;
+    const text = [
+      meal.mealName,
+      meal.mealDescription,
+      meal.mealPreference,
+      ...(meal.mealTagInfo || []).map(t => t.mealTag || "")
+    ].join(" ").toLowerCase();
+
+    const rules = {
+      gourmet: /gourmet|premium|special/,
+      kids: /kid|child/,
+      desserts: /dessert|cake|brownie|sweet|chocolate|cookie|ice.?cream/,
+      refreshments: /refreshment|snack|tea|coffee|juice/,
+      ready: /ready.?to.?eat|wrap|sandwich|meal box/,
+      salads: /salad/,
+      beverages: /beverage|drink|juice|water|coffee|tea/
+    };
+    return rules[category] ? rules[category].test(text) : true;
+  }
+
+  function mealIsVeg(meal) {
+    const text = [
+      meal.mealName,
+      meal.mealDescription,
+      meal.mealPreference,
+      ...(meal.mealTagInfo || []).map(t => t.mealTag || "")
+    ].join(" ").toLowerCase();
+
+    if (/\bnon.?veg\b|\bchicken\b|\bmutton\b|\bfish\b|\begg\b|\bmeat\b|\bseafood\b/.test(text)) return false;
+    return /\bveg\b|\bvegetarian\b|\bvegan\b|\bpaneer\b|\bdal\b|\bfruit\b|\bsalad\b/.test(text);
+  }
+
+  function getFilteredMeals(flightKey = getCurrentFlightKey()) {
+    const source = getMealsForFlightKey(flightKey);
+    const search = (document.getElementById("mealSearch")?.value || "").trim().toLowerCase();
+
+    return source.filter(meal => {
+      const text = [meal.mealName, meal.mealDescription, meal.mealPreference]
+        .join(" ").toLowerCase();
+      const matchesSearch = !search || text.includes(search);
+      const matchesCategory = mealMatchesCategory(meal, activeMealCategory);
+      const matchesVeg = !onlyVeg || mealIsVeg(meal);
+      return matchesSearch && matchesCategory && matchesVeg;
     });
   }
 
-  function getPrice(meal) {
-    if (typeof meal.price === "number" && meal.price > 0) return meal.price;
-    return MEAL_PRICES[meal.mealName] || MEAL_PRICES.default;
+  function setMealCategory(category, button) {
+    activeMealCategory = category;
+    currentPage = 0;
+    document.querySelectorAll(".filter-pill").forEach(el => el.classList.remove("active"));
+    if (button) button.classList.add("active");
+    render();
   }
 
-  function getNutrition(meal) {
-    return meal.nutritionFacts?.[0] || {};
+  function toggleSearch() {
+    const wrap = document.getElementById("searchInputWrap");
+    const btn = document.getElementById("searchButton");
+    if (!wrap || !btn) return;
+    wrap.classList.toggle("show");
+    btn.classList.toggle("active", wrap.classList.contains("show"));
+    if (wrap.classList.contains("show")) {
+      document.getElementById("mealSearch")?.focus();
+    }
   }
 
-  const NUTRITION_ROWS = [
-    ["Energy","energy","energyRdaPercentage"],
-    ["Protein","protein","proteinRdaPercentage"],
-    ["Carbohydrates","carbohydrates","carbohydratesRdaPercentage"],
-    ["Total Fat","totalFat","totalFatRdaPercentage"],
-    ["Saturated Fat","saturatedFat","saturatedFatRdaPercentage"],
-    ["Unsaturated Fat","unsaturatedFat","unSaturatedFatRdaPercentage"],
-    ["Trans Fat","transFat","transFatRdaPercentage"],
-    ["Total Sugar","totalSugar","sugarRdaPercentage"],
-    ["Sodium","sodium","sodiumRdaPercentage"]
-  ];
-
-  function renderNutrition(meal, mealKey, open) {
-    const n = getNutrition(meal);
-    const rows = NUTRITION_ROWS.filter(([,valueKey]) => n[valueKey] !== undefined && n[valueKey] !== "");
-    if (!rows.length) return "";
-
-    const table = rows.map(([label,valueKey,rdaKey]) => `
-      <div class="nutrition-row">
-        <div>${label}</div>
-        <div class="nutrition-value">${escapeHtml(n[valueKey])}</div>
-        <div class="nutrition-rda">${escapeHtml(n[rdaKey] ?? "-")}${n[rdaKey] && !String(n[rdaKey]).includes("%") ? "%" : ""}</div>
-      </div>`).join("");
-
-    const note = n.avgCaloriesRequiredLiner || "";
-    return `
-      <button class="nutrition-toggle" type="button" onclick="toggleNutrition('${escapeHtml(mealKey)}')">
-        Nutritional Facts ${open ? "⌃" : "⌄"}
-      </button>
-      ${open ? `
-        <div class="nutrition-panel">
-          <div class="nutrition-title">Nutritional Facts</div>
-          <div class="nutrition-head"><div>Nutrition</div><div>Per 100 g</div><div>% RDA</div></div>
-          ${table}
-          ${note ? `<div class="nutrition-note">${escapeHtml(note)}</div>` : ""}
-        </div>` : ""}`;
+  function applyMealFilters() {
+    currentPage = 0;
+    render();
   }
 
-  let openNutritionKey = null;
-
-  function toggleNutrition(mealKey) {
-    openNutritionKey = openNutritionKey === mealKey ? null : mealKey;
+  function toggleVegFilter() {
+    onlyVeg = !onlyVeg;
+    const toggle = document.getElementById("vegToggle");
+    if (toggle) {
+      toggle.classList.toggle("on", onlyVeg);
+      toggle.setAttribute("aria-checked", String(onlyVeg));
+    }
+    currentPage = 0;
     render();
   }
 
@@ -535,26 +1154,35 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
     container.innerHTML = "";
 
     if (!meals.length) {
-      container.innerHTML = `<div class="empty"><strong>No meal options are available.</strong><br>Please verify your booking and try again.</div>`;
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">No meal options are available from the SSR API.</div>
+            <div class="meal-description">Please verify your booking and try again.</div>
+          </div>
+        </div>
+      `;
       renderTravellerSelection();
       updateTotal();
-      updatePagination();
       return;
     }
 
     const flightKey = getCurrentFlightKey();
-    const currentMeals = getMealsForFlightKey(flightKey);
-
+    const currentMeals = getFilteredMeals(flightKey);
     if (!currentMeals.length) {
-      container.innerHTML = `<div class="empty"><strong>No meal options are available for this flight.</strong><br>Please select another flight or verify your booking.</div>`;
+      container.innerHTML = `
+        <div class="meal-item">
+          <div class="meal-left">
+            <div class="meal-name">No meal options are available for this flight.</div>
+            <div class="meal-description">Please select another flight or verify your booking.</div>
+          </div>
+        </div>
+      `;
       renderTravellerSelection();
       updateTotal();
-      updatePagination();
       return;
     }
 
-    const maxPage = Math.max(0, Math.ceil(currentMeals.length / pageSize) - 1);
-    currentPage = Math.min(currentPage, maxPage);
     const start = currentPage * pageSize;
     const pageItems = currentMeals.slice(start, start + pageSize);
     const travellerQty = getCurrentTravellerQuantities();
@@ -563,188 +1191,174 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
       const mealKey = meal.ssrKey || meal.ssrCode || meal.mealName || `${start + i}`;
       const qty = travellerQty[mealKey] || 0;
       const price = getPrice(meal);
-      const tags = (meal.mealTagInfo || []).filter(t => t?.mealTag);
-      const type = String(meal.mealType || "").toLowerCase();
-      const open = openNutritionKey === mealKey;
+      const energy = getEnergy(meal);
+      const beverageIncluded = meal.beverageIncluded;
+      const tags = meal.mealTagInfo || [];
 
-      const card = document.createElement("article");
-      card.className = "meal-card";
+      const div = document.createElement("div");
+      div.className = "meal-item";
 
-      const tagsHtml = [
-        meal.prebookLiner,
-        ...tags.map(t => t.mealTag)
-      ].filter(Boolean).map(tag => `<span class="meal-tag">${escapeHtml(tag)}</span>`).join("");
+      let tagsHtml = "";
+      if (meal.prebookLiner) {
+        tagsHtml += `<span class="meal-tag" style="background:#FF9800;color:white;">${meal.prebookLiner}</span>`;
+      }
+      tags.forEach(tag => {
+        tagsHtml += `<span class="meal-tag" style="background:${tag.mealTagColorCode || '#666'};color:${tag.mealTagTextColor || 'white'};">${tag.mealTag}</span>`;
+      });
 
-      const nutrition = getNutrition(meal);
-      const energy = nutrition.energy || meal.calorieAndGramLiner || "";
-
-      card.innerHTML = `
-        <div class="meal-main">
-          <div class="meal-img-container">
-            <img class="meal-img" src="${escapeHtml(getImage(meal))}" alt="${escapeHtml(meal.mealName)}"
-                 onerror="this.src='${FALLBACK_IMG}'">
-            ${type ? `<span class="food-type ${type === "veg" ? "veg" : "nonveg"}" title="${escapeHtml(type)}"></span>` : ""}
-            ${meal.beverageIncluded ? `<span class="beverage-badge">☕ Beverage Included</span>` : ""}
-          </div>
-          <div class="meal-content">
-            ${tagsHtml ? `<div class="meal-tags">${tagsHtml}</div>` : ""}
-            <h3 class="meal-name">${escapeHtml(meal.mealName)}</h3>
-            <div class="meal-description">${escapeHtml(extractText(meal.mealDescription))}</div>
-            ${energy ? `<div class="meal-meta"><strong>${escapeHtml(energy)}</strong></div>` : ""}
-            ${meal.allergens ? `<div class="allergens">${escapeHtml(meal.allergens)}</div>` : ""}
-            <div class="meal-footer">
-              ${qty === 0
-                ? `<button class="add-btn" type="button" onclick="increase('${escapeHtml(mealKey)}')">Add • ₹${price}</button>`
-                : `<div class="qty-box">
-                     <button class="qty-btn" type="button" onclick="decrease('${escapeHtml(mealKey)}')">−</button>
-                     <span class="qty-count">${qty}</span>
-                     <button class="qty-btn" type="button" onclick="increase('${escapeHtml(mealKey)}')" ${qty >= MAX_QTY ? "disabled" : ""}>+</button>
-                   </div>`}
-            </div>
-          </div>
+      div.innerHTML = `
+        <div class="meal-img-container">
+          <img class="meal-img" src="${getImage(meal)}" onerror="this.src='${FALLBACK_IMG}'"/>
+          ${beverageIncluded ? '<span class="beverage-badge">🥤 Beverage Included</span>' : ''}
         </div>
-        ${renderNutrition(meal, mealKey, open)}
+
+        <div class="meal-left">
+          <div class="meal-name">${meal.mealName}</div>
+          <div class="meal-description">${extractText(meal.mealDescription)}</div>
+          ${tagsHtml ? `<div class="meal-tags">${tagsHtml}</div>` : ''}
+          ${energy ? `<div class="nutrition-info">⚡ Energy: ${energy}</div>` : ''}
+          <div class="meal-price">₹${price}</div>
+        </div>
+
+        <div class="qty-box"></div>
       `;
-      container.appendChild(card);
+
+      const qtyBox = div.querySelector('.qty-box');
+      const decreaseBtn = document.createElement('button');
+      decreaseBtn.type = 'button';
+      decreaseBtn.className = 'qty-btn';
+      decreaseBtn.disabled = qty === 0;
+      decreaseBtn.textContent = '−';
+      decreaseBtn.addEventListener('click', () => {
+        decrease(mealKey);
+      });
+
+      const countEl = document.createElement('div');
+      countEl.className = 'qty-count';
+      countEl.textContent = qty;
+
+      const increaseBtn = document.createElement('button');
+      increaseBtn.type = 'button';
+      increaseBtn.className = 'qty-btn';
+      increaseBtn.disabled = qty >= MAX_QTY;
+      increaseBtn.textContent = '+';
+      increaseBtn.addEventListener('click', () => {
+        increase(mealKey);
+      });
+
+      qtyBox.appendChild(decreaseBtn);
+      qtyBox.appendChild(countEl);
+      qtyBox.appendChild(increaseBtn);
+      container.appendChild(div);
     });
 
     renderTravellerSelection();
     updateTotal();
-    updatePagination();
-  }
-
-  function updatePagination() {
-    const currentMeals = getMealsForFlightKey(getCurrentFlightKey());
-    const pages = Math.max(1, Math.ceil(currentMeals.length / pageSize));
-    document.getElementById("pageInfo").textContent = `Page ${currentPage + 1} of ${pages}`;
-    document.getElementById("prevBtn").disabled = currentPage === 0;
-    document.getElementById("nextBtn").disabled = currentPage >= pages - 1;
   }
 
   function increase(mealKey) {
     const travellerQty = getCurrentTravellerQuantities();
-    travellerQty[mealKey] = Math.min((travellerQty[mealKey] || 0) + 1, MAX_QTY);
+    if (!travellerQty[mealKey]) travellerQty[mealKey] = 0;
+    if (travellerQty[mealKey] < MAX_QTY) {
+      travellerQty[mealKey]++;
+    }
     render();
   }
 
   function decrease(mealKey) {
     const travellerQty = getCurrentTravellerQuantities();
-    travellerQty[mealKey] = Math.max((travellerQty[mealKey] || 0) - 1, 0);
+    if (travellerQty[mealKey] > 0) {
+      travellerQty[mealKey]--;
+    }
     render();
   }
 
   function getTravellerItemCount(travellerIdx, flightKey = getCurrentFlightKey()) {
     const travellerQty = quantities[flightKey]?.[travellerIdx] || {};
-    return Object.values(travellerQty).reduce((a,b) => a + b, 0);
+    return Object.values(travellerQty).reduce((a, b) => a + b, 0);
   }
 
   function getTotalItems() {
     const flightKey = getCurrentFlightKey();
-    return Object.keys(quantities[flightKey] || {}).reduce(
-      (total,t) => total + getTravellerItemCount(parseInt(t,10), flightKey), 0
-    );
+    let total = 0;
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      total += getTravellerItemCount(parseInt(t, 10), flightKey);
+    });
+    return total;
   }
 
   function getTotalMeals() {
     const flightKey = getCurrentFlightKey();
-    return Object.values(quantities[flightKey] || {}).reduce(
-      (count,q) => count + Object.values(q || {}).filter(v => v > 0).length, 0
-    );
+    let count = 0;
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerQty = quantities[flightKey][t] || {};
+      count += Object.keys(travellerQty).filter(i => travellerQty[i] > 0).length;
+    });
+    return count;
   }
 
   function getTotalAmount() {
     const flightKey = getCurrentFlightKey();
-    const flightMeals = getMealsForFlightKey(flightKey);
-    return Object.values(quantities[flightKey] || {}).reduce((total,q) => {
-      return total + Object.entries(q || {}).reduce((sum,[mealKey,qty]) => {
-        const meal = flightMeals.find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
-        return sum + (meal && qty > 0 ? getPrice(meal) * qty : 0);
-      },0);
-    },0);
+    let total = 0;
+    Object.keys(quantities[flightKey] || {}).forEach(t => {
+      const travellerQty = quantities[flightKey][t] || {};
+      Object.keys(travellerQty).forEach(mealKey => {
+        if (travellerQty[mealKey] > 0) {
+          const meal = getMealsForFlightKey(flightKey).find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+          if (meal) {
+            total += getPrice(meal) * travellerQty[mealKey];
+          }
+        }
+      });
+    });
+    return total;
   }
 
   function updateTotal() {
-    const items = getTotalItems(), mealsCount = getTotalMeals(), amount = getTotalAmount();
-    document.getElementById("totalItems").textContent = items;
-    document.getElementById("totalMeals").textContent = mealsCount;
-    document.getElementById("totalAmount").textContent = amount;
+    const totalItems = getTotalItems();
+    const totalMeals = getTotalMeals();
+    const totalAmount = getTotalAmount();
+
+    document.getElementById("totalItems").textContent = totalItems;
+    document.getElementById("totalMeals").textContent = totalMeals;
+    document.getElementById("totalAmount").textContent = totalAmount;
+
     const btn = document.getElementById("confirmBtn");
-    btn.disabled = items === 0;
-    btn.textContent = items ? `Confirm Order (${items} items) • ₹${amount}` : "Confirm Order";
+    btn.disabled = totalItems === 0;
+    btn.textContent = totalItems > 0 ? `Confirm Order (${totalItems} items) - ₹${totalAmount}` : "Confirm Order";
   }
 
   function nextPage() {
-    const count = getMealsForFlightKey(getCurrentFlightKey()).length;
-    if ((currentPage + 1) * pageSize < count) {
+    if ((currentPage + 1) * pageSize < getFilteredMeals().length) {
       currentPage++;
-      openNutritionKey = null;
       render();
-      window.scrollTo({top:document.getElementById("menu").offsetTop - 10,behavior:"smooth"});
     }
   }
 
   function prevPage() {
     if (currentPage > 0) {
       currentPage--;
-      openNutritionKey = null;
       render();
-      window.scrollTo({top:document.getElementById("menu").offsetTop - 10,behavior:"smooth"});
     }
-  }
-
-  // -------------------------
-  // Fetch SSR + Storyblok metadata
-  // -------------------------
-  async function fetchMeals() {
-    if (!passengerKeys.length || !authToken || !qpBotApiKey) {
-      meals = [];
-      render();
-      return;
-    }
-
-    try {
-      // Do not let Storyblok failure prevent the SSR meal list from rendering.
-      // Some WebView/proxy environments can return ERR_CONTENT_DECODING_FAILED for
-      // the Storyblok CDN response. Nutrition metadata is optional in that case.
-      const [ssrResult, storyResult] = await Promise.allSettled([
-        fetch(SSR_AVAILABILITY_URL,{
-          method:"POST",
-          headers:apiHeaders(),
-          body:JSON.stringify(passengerKeys)
-        }),
-        fetchStoryblokMeals()
-      ]);
-
-      if (ssrResult.status !== "fulfilled") {
-        throw ssrResult.reason || new Error("SSR availability request failed");
-      }
-
-      const ssrRes = ssrResult.value;
-      if (!ssrRes.ok) throw new Error(`SSR availability returned ${ssrRes.status}`);
-
-      const data = await ssrRes.json();
-      const metadata = storyResult.status === "fulfilled" ? storyResult.value : {};
-      if (storyResult.status === "rejected") {
-        console.warn("Storyblok metadata unavailable; rendering SSR data only.", storyResult.reason);
-      }
-      meals = mergeMealMetadata(parseSsrAvailabilityMeals(data), metadata);
-
-      if (!meals.length) console.warn("SSR availability returned no meals.");
-    } catch (err) {
-      console.warn("Meal fetch failed.", err);
-      meals = [];
-    }
-    render();
   }
 
   // -------------------------
   // Webview -> Bot handoff
+  // Mirrors the SHL contract: build a || delimited key=value string,
+  // escape commas/&, URL-encode it, wrap it in the Start Chatting envelope,
+  // and postMessage it as a string to the Haptik container.
+  // Each meal line item now also carries the traveller name it belongs to:
+  //   traveller:mealName:qty:price  (joined by "~")
   // -------------------------
   function sendOrderToBot(orderData) {
-    const mealsEncoded = orderData.meals.map(m => m.ssrCode
-      ? `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`
-      : `${m.traveller}:${m.name}:${m.qty}:${m.price}`
-    ).join(",");
+    const mealsEncoded = orderData.meals
+      .map(m => {
+        if (m.ssrCode) {
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
+        }
+        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
+      })
+      .join(",");
 
     let data =
       "pnr=" + orderData.pnr +
@@ -760,14 +1374,19 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
       "||travellerNames=" + (orderData.travellerNames || bookingContext.travellerNames.join(",")) +
       "||selected_meals=" + mealsEncoded +
       "||capture_meal_selection=" + mealsEncoded +
-      "||selected_meal=" + (orderData.selected_meal || mealsEncoded) + " ";
+      "||selected_meal=" + (orderData.selected_meal || mealsEncoded) +
+      " ";
 
-    data = encodeURIComponent(data.split(",").join(";;").split("&").join("^%"));
-    const message = `{api_name:akasa_meal,data:${data}}`;
+    data = data.split(",").join(";;");
+    data = data.split("&").join("^%");
+    data = encodeURIComponent(data);
+
+    const text = "{api_name:akasa_meal,data:" + data + "}";
 
     if (window.parent) {
       window.parent.postMessage(
-        `http://haptik-webview//perform-action?action=close&message=${message}&message_type=0`,"*"
+        `http://haptik-webview//perform-action?action=close&message=${text}&message_type=0`,
+        "*"
       );
     }
   }
@@ -777,17 +1396,23 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
     Object.keys(quantities).forEach(flightKey => {
       const flightMeals = getMealsForFlightKey(flightKey);
       Object.keys(quantities[flightKey] || {}).forEach(t => {
-        const travellerIndex = parseInt(t,10);
+        const travellerIdx = parseInt(t, 10);
         const travellerQty = quantities[flightKey][t] || {};
-        const traveller = bookingContext.travellerNames[travellerIndex] || `Traveller ${travellerIndex + 1}`;
+        const travellerName = bookingContext.travellerNames[travellerIdx] || `Traveller ${travellerIdx + 1}`;
 
         Object.keys(travellerQty).forEach(mealKey => {
           const qty = travellerQty[mealKey];
-          const meal = flightMeals.find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
-          if (qty > 0 && meal) {
+          if (qty > 0) {
+            const meal = flightMeals.find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+            if (!meal) return;
             selectedMeals.push({
-              traveller,travellerIndex,name:meal.mealName,qty,
-              price:getPrice(meal),ssrCode:meal.ssrCode || "",ssrKey:meal.ssrKey || ""
+              traveller: travellerName,
+              travellerIndex: travellerIdx,
+              name: meal.mealName,
+              qty,
+              price: getPrice(meal),
+              ssrCode: meal.ssrCode || meal.mealSsrCode || "",
+              ssrKey: meal.ssrKey || ""
             });
           }
         });
@@ -800,42 +1425,61 @@ select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;back
     const values = new Set();
     Object.keys(quantities).forEach(flightKey => {
       Object.keys(quantities[flightKey] || {}).forEach(t => {
-        if (getTravellerItemCount(parseInt(t,10),flightKey) > 0) values.add(parseInt(t,10) + 1);
+        if (getTravellerItemCount(parseInt(t, 10), flightKey) > 0) {
+          values.add(parseInt(t, 10) + 1);
+        }
       });
     });
-    if (!values.size) values.add(currentTraveller + 1);
-    return Array.from(values).sort((a,b) => a-b);
+    if (!values.size) {
+      values.add(currentTraveller + 1);
+    }
+    return Array.from(values).sort((a, b) => a - b);
   }
 
   async function confirmOrder() {
     const selectedMeals = getSelectedMealsAcrossFlights();
-    if (!selectedMeals.length) return alert("Select at least one item");
+    const selectedTravellerValues = getSelectedTravellerValues();
+
+    if (!selectedMeals.length) {
+      alert("Select at least one item");
+      return;
+    }
 
     const orderData = {
-      pnr:bookingContext.pnr,lastname:bookingContext.lastname,email:bookingContext.email,
-      origin:bookingContext.origin,destination:bookingContext.destination,departure:bookingContext.departure,
-      travellers:bookingContext.travellers,
-      flight_segment_key:selectedFlightSegmentKey || segmentKeys[0] || "",
-      segment_keys:getAllSegmentKeys().join(","),
-      selected_travellers:getSelectedTravellerValues().join(","),
-      travellerNames:bookingContext.travellerNames.join(","),
-      meals:selectedMeals,
-      selected_meal:selectedMeals.map(m =>
-        `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`
-      ).join(","),
-      totalItems:selectedMeals.reduce((s,m) => s + m.qty,0),
-      totalAmount:selectedMeals.reduce((s,m) => s + m.qty * m.price,0)
+      pnr: bookingContext.pnr,
+      lastname: bookingContext.lastname,
+      email: bookingContext.email,
+      origin: bookingContext.origin,
+      destination: bookingContext.destination,
+      departure: bookingContext.departure,
+      travellers: bookingContext.travellers,
+      flight_segment_key: selectedFlightSegmentKey || (segmentKeys[0] || ""),
+      segment_keys: getAllSegmentKeys().join(","),
+      selected_travellers: selectedTravellerValues.join(","),
+      travellerNames: bookingContext.travellerNames.join(","),
+      meals: selectedMeals,
+      selected_meal: selectedMeals.map(m => {
+        if (m.ssrCode) {
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
+        }
+        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
+      }).join(","),
+      totalItems: selectedMeals.reduce((sum, item) => sum + item.qty, 0),
+      totalAmount: selectedMeals.reduce((sum, item) => sum + item.qty * item.price, 0)
     };
 
     document.getElementById("mainContent").style.display = "none";
     document.querySelector(".total-section").style.display = "none";
     document.getElementById("successScreen").style.display = "flex";
-    setTimeout(() => sendOrderToBot(orderData),2000);
+
+    setTimeout(() => {
+      sendOrderToBot(orderData);
+    }, 2000);
   }
 
   renderBookingContext();
   fetchMeals();
+  </script>
 
-</script>
-</body>
-</html>
+  </body>
+  </html>
