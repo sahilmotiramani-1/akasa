@@ -116,28 +116,42 @@ body{
 .meal-description{font-size:10px;color:#555;line-height:1.35;margin-bottom:6px}
 .meal-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}
 .meal-tag{font-size:8px;padding:2px 6px;border-radius:9px;font-weight:600}
-.nutrition-info{font-size:9px;color:#666;margin-top:4px;padding:4px 6px;background:#f8f8f8;border-radius:5px;display:inline-block}
-.nutrition-dropdown{margin-top:6px;width:100%}
+.nutrition-info{display:none}
+.nutrition-dropdown{margin-top:7px;width:100%}
 .nutrition-toggle{
-  width:100%;display:flex;align-items:center;justify-content:space-between;
-  padding:6px 8px;border:0;border-radius:6px;background:#f8f8f8;
-  color:#5b20d6;font-size:10px;font-weight:700;cursor:pointer
+  width:auto;display:inline-flex;align-items:center;gap:7px;
+  padding:0;border:0;background:transparent;color:#5b20d6;
+  font-size:11px;font-weight:700;cursor:pointer
 }
-.nutrition-toggle .nutrition-arrow{font-size:13px;color:#5b20d6;transition:transform .2s}
+.nutrition-toggle .nutrition-arrow{
+  font-size:15px;line-height:1;color:#5b20d6;transition:transform .2s
+}
 .nutrition-toggle.open .nutrition-arrow{transform:rotate(180deg)}
 .nutrition-panel{
-  display:none;margin-top:3px;padding:5px 8px;background:#fff;
-  border:1px solid #eee;border-radius:6px
+  display:none;margin-top:8px;padding:14px 12px 0;background:#fff;
+  border:2px solid #ffdfcf;border-radius:20px;box-sizing:border-box
 }
 .nutrition-panel.open{display:block}
+.nutrition-table-header,.nutrition-row{
+  display:grid;grid-template-columns:1.5fr .85fr .75fr;
+  align-items:center;column-gap:8px
+}
+.nutrition-table-header{
+  padding:0 0 9px;border-bottom:2px solid #ff6500;
+  font-size:10px;color:#666;font-weight:500
+}
 .nutrition-row{
-  display:flex;justify-content:space-between;gap:10px;
-  padding:4px 0;border-bottom:1px solid #eee;font-size:9px
+  min-height:38px;padding:7px 0;border-bottom:2px solid #ffe4d8;
+  font-size:10px;color:#333;box-sizing:border-box
 }
 .nutrition-row:last-child{border-bottom:0}
-.nutrition-label{color:#666;font-weight:600}
-.nutrition-value{color:#292929;font-weight:700;text-align:right}
-.meal-price{font-size:12px;font-weight:700;color:#ff6a3d;margin-top:4px}
+.nutrition-label{font-weight:500;color:#555}
+.nutrition-label.strong{font-weight:800;color:#333}
+.nutrition-label.sub{font-weight:400;color:#666}
+.nutrition-value,.nutrition-rda{font-weight:700;color:#333}
+.nutrition-note{
+  margin:14px 4px 2px;font-size:10px;line-height:1.45;color:#444
+}
 .qty-box{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .meal-add-btn{
   min-width:72px;padding:8px 9px;border:0;border-radius:7px;
@@ -1090,7 +1104,7 @@ body{
         `;
       });
 
-      // Build the full nutrition dropdown from whatever fields the SSR API provides.
+      // Build the nutrition dropdown in the same table-style layout as the reference UI.
       const nutritionSource = Array.isArray(meal.nutritionFacts)
         ? (meal.nutritionFacts.find(Boolean) || {})
         : (meal.nutritionFacts || {});
@@ -1098,39 +1112,75 @@ body{
       const getNutritionValue = (...keys) => {
         for (const key of keys) {
           const value = nutritionSource?.[key];
-          if (value !== undefined && value !== null && String(value).trim() !== "") {
-            return value;
+          if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+        }
+        return "";
+      };
+
+      const getNutritionRda = (...keys) => {
+        const rdaObjects = [
+          nutritionSource?.rda,
+          nutritionSource?.rdaValues,
+          nutritionSource?.rda_values,
+          nutritionSource?.percentRda,
+          nutritionSource?.percentRDAs
+        ].filter(v => v && typeof v === "object" && !Array.isArray(v));
+
+        for (const key of keys) {
+          for (const directKey of [
+            `${key}Rda`, `${key}RDA`, `${key}_rda`,
+            `${key}RdaValue`, `${key}RDAPercent`, `${key}PercentRda`
+          ]) {
+            const value = nutritionSource?.[directKey];
+            if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+          }
+
+          for (const obj of rdaObjects) {
+            const value = obj?.[key] ?? obj?.[key.toLowerCase()];
+            if (value !== undefined && value !== null && String(value).trim() !== "") return value;
           }
         }
         return "";
       };
 
       const nutritionRows = [
-        ["Energy", getNutritionValue("energy", "energyValue", "calories", "calorie")],
-        ["Protein", getNutritionValue("protein", "proteinValue")],
-        ["Carbohydrates", getNutritionValue("carbohydrates", "carbohydrate", "carbs", "carbohydrateValue")],
-        ["Total Fat", getNutritionValue("totalFat", "total_fat", "fat", "fatValue")],
-        ["Saturated Fat", getNutritionValue("saturatedFat", "saturated_fat")],
-        ["Unsaturated Fat", getNutritionValue("unsaturatedFat", "unsaturated_fat")],
-        ["Trans Fat", getNutritionValue("transFat", "trans_fat")],
-        ["Dietary Fiber", getNutritionValue("dietaryFiber", "dietary_fiber", "fiber")],
-        ["Sugar", getNutritionValue("sugar", "sugars")],
-        ["Sodium", getNutritionValue("sodium")]
-      ].filter(([, value]) => value !== "");
+        {label:"Energy", keys:["energy","energyValue","calories","calorie"], strong:true},
+        {label:"Protein", keys:["protein","proteinValue"], strong:true},
+        {label:"Carbohydrates", keys:["carbohydrates","carbohydrate","carbs","carbohydrateValue"], strong:true},
+        {label:"Total Fat", keys:["totalFat","total_fat","fat","fatValue"], strong:true},
+        {label:"Saturated Fat", keys:["saturatedFat","saturated_fat"], sub:true},
+        {label:"Unsaturated Fat", keys:["unsaturatedFat","unsaturated_fat"], sub:true},
+        {label:"Trans Fat", keys:["transFat","trans_fat"], sub:true},
+        {label:"Total Sugar", keys:["totalSugar","total_sugar","sugar","sugars"], strong:true},
+        {label:"Sodium", keys:["sodium"], strong:true}
+      ].map(row => ({
+        ...row,
+        value:getNutritionValue(...row.keys),
+        rda:getNutritionRda(...row.keys)
+      })).filter(row => row.value !== "");
 
       const nutritionHtml = nutritionRows.length ? `
         <div class="nutrition-dropdown">
-          <button type="button" class="nutrition-toggle">
+          <button type="button" class="nutrition-toggle" aria-expanded="false">
             <span>Nutritional Facts</span>
             <span class="nutrition-arrow">⌄</span>
           </button>
           <div class="nutrition-panel">
-            ${nutritionRows.map(([label, value]) => `
+            <div class="nutrition-table-header">
+              <span>Nutritional Facts</span>
+              <span>Per 100 g</span>
+              <span>%RDA Values</span>
+            </div>
+            ${nutritionRows.map(row => `
               <div class="nutrition-row">
-                <span class="nutrition-label">${label}</span>
-                <span class="nutrition-value">${value}</span>
+                <span class="nutrition-label ${row.strong ? "strong" : ""} ${row.sub ? "sub" : ""}">${row.label}</span>
+                <span class="nutrition-value">${row.value}</span>
+                <span class="nutrition-rda">${row.rda || "-"}</span>
               </div>
             `).join("")}
+            <div class="nutrition-note">
+              Average active adult requires 2,000 kcal energy per day, however, calorie needs may vary
+            </div>
           </div>
         </div>
       ` : "";
@@ -1148,7 +1198,6 @@ body{
           <div class="meal-description">${extractText(meal.mealDescription)}</div>
           ${tagsHtml ? `<div class="meal-tags">${tagsHtml}</div>` : ''}
           ${nutritionHtml}
-          <div class="meal-price">₹${price}</div>
         </div>
 
         <div class="qty-box"></div>
@@ -1161,6 +1210,7 @@ body{
         nutritionToggle.addEventListener("click", () => {
           const open = nutritionPanel.classList.toggle("open");
           nutritionToggle.classList.toggle("open", open);
+          nutritionToggle.setAttribute("aria-expanded", String(open));
         });
       }
 
