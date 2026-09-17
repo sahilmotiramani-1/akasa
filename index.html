@@ -289,7 +289,6 @@ body{
   const SSR_AVAILABILITY_URL = "https://staging-agents-relay-uat.qp.akasaair.com/bgws/api/ibe/agents/ssrAvailabilityV2";
   const STORYBLOK_API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
   const DEFAULT_API_SOURCE = "CHATBOTWEB";
-  const SET_DATA_API_URL = "https://enterprise-service.hellohaptik.com/integration/akasaair/set_data/";
 
   const urlParams = new URLSearchParams(window.location.search);
   const authToken = urlParams.get("auth_token") || urlParams.get("authorization") || "";
@@ -1376,57 +1375,44 @@ body{
   // Each meal line item now also carries the traveller name it belongs to:
   //   traveller:mealName:qty:price  (joined by "~")
   // -------------------------
-  // Generate a fresh random numeric ID for every confirmed order.
-  // This ID is used to store the complete order payload in enterprise-service.
-  function generateRandomId() {
-    if (window.crypto && window.crypto.getRandomValues) {
-      const array = new Uint32Array(1);
-      window.crypto.getRandomValues(array);
-      return array[0];
-    }
-
-    // Fallback for environments where crypto.getRandomValues is unavailable.
-    return Math.floor(Math.random() * 4294967296);
-  }
-
-  async function saveOrderData(orderData) {
-    const id = generateRandomId();
-
-    const response = await fetch(SET_DATA_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        id: id,
-        details: orderData
+  function sendOrderToBot(orderData) {
+    const mealsEncoded = orderData.meals
+      .map(m => {
+        if (m.ssrCode) {
+          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
+        }
+        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
       })
-    });
+      .join(",");
 
-    if (!response.ok) {
-      throw new Error(`set_data API failed with status ${response.status}`);
-    }
+    let data =
+      "pnr=" + orderData.pnr +
+      "||lastname=" + orderData.lastname +
+      "||email=" + orderData.email +
+      "||origin=" + orderData.origin +
+      "||destination=" + orderData.destination +
+      "||departure=" + orderData.departure +
+      "||travellers=" + orderData.travellers +
+      "||flight_segment_key=" + orderData.flight_segment_key +
+      "||segment_keys=" + (orderData.segment_keys || orderData.flight_segment_key || "") +
+      "||selected_travellers=" + orderData.selected_travellers +
+      "||travellerNames=" + (orderData.travellerNames || bookingContext.travellerNames.join(",")) +
+      "||selected_meals=" + mealsEncoded +
+      "||capture_meal_selection=" + mealsEncoded +
+      "||selected_meal=" + (orderData.selected_meal || mealsEncoded) +
+      " ";
 
-    return id;
-  }
+    data = data.split(",").join(";;");
+    data = data.split("&").join("^%");
+    data = encodeURIComponent(data);
 
-  async function sendOrderToBot(orderData) {
-    try {
-      // Store the complete order data in enterprise-service and get the
-      // randomly generated ID back. Only this ID is sent in the bot text.
-      const id = await saveOrderData(orderData);
+    const text = "{api_name:akasa_meal,data:" + data + "}";
 
-      const text = "{api_name:manage_meals_selection,data:" + id + "}";
-
-      if (window.parent) {
-        window.parent.postMessage(
-          `http://haptik-webview//perform-action?action=close&message=${text}&message_type=0`,
-          "*"
-        );
-      }
-    } catch (error) {
-      console.error("Unable to save meal order data:", error);
-      alert("Unable to confirm the meal order. Please try again.");
+    if (window.parent) {
+      window.parent.postMessage(
+        `http://haptik-webview//perform-action?action=close&message=${text}&message_type=0`,
+        "*"
+      );
     }
   }
 
@@ -1511,7 +1497,9 @@ body{
     document.querySelector(".total-section").style.display = "none";
     document.getElementById("successScreen").style.display = "flex";
 
-    sendOrderToBot(orderData);
+    setTimeout(() => {
+      sendOrderToBot(orderData);
+    }, 2000);
   }
 
   renderBookingContext();
