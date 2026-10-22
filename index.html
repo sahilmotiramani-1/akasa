@@ -1406,7 +1406,7 @@ body{
     data = data.split("&").join("^%");
     data = encodeURIComponent(data);
 
-    const text = "Meals added to cart{api_name:akasa_meal,data:" + data + "}";
+    const text = "Meals added to cart! Complete payment to confirm your booking.{always trigger function `manage_meal_selection`,data:" + data + "}";
 
     if (window.parent) {
       window.parent.postMessage(
