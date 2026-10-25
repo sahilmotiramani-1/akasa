@@ -806,8 +806,14 @@ body{
         const priceValue = availability.price ?? availability.amount ?? item.price ?? 0;
         const price = typeof priceValue === "number" ? priceValue : parseFloat(priceValue) || 0;
 
+        const ssrKeysByPassenger = {};
+        passengerAvailability.forEach(p => {
+          if (p && p.passengerKey && p.ssrKey) ssrKeysByPassenger[p.passengerKey] = p.ssrKey;
+        });
+
         parsedMeals.push({
           ssrCode: item.ssrCode,
+          ssrKeysByPassenger,
           ssrKey: availability.ssrKey || item.ssrKey || "",
           journeyKey,
           mealName: item.ssrName || item.name || item.ssrCode,
@@ -1375,14 +1381,18 @@ body{
   // Each meal line item now also carries the traveller name it belongs to:
   //   traveller:mealName:qty:price  (joined by "~")
   // -------------------------
+  // One meal line: traveller|ssrCode|ssrKey|price|qty|journeyKey|segmentKey
+  // (commas are reserved as item separators, so only a single leg key is sent).
+  function encodeMealItem(m) {
+    if (m.ssrCode) {
+      return [m.travellerIndex + 1, m.ssrCode, m.ssrKey || "", m.price, m.qty, m.journeyKey || "", m.segmentKey || ""].join("|");
+    }
+    return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
+  }
+
   function sendOrderToBot(orderData) {
     const mealsEncoded = orderData.meals
-      .map(m => {
-        if (m.ssrCode) {
-          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
-        }
-        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
-      })
+      .map(encodeMealItem)
       .join(",");
 
     let data =
@@ -1437,7 +1447,9 @@ body{
               qty,
               price: getPrice(meal),
               ssrCode: meal.ssrCode || meal.mealSsrCode || "",
-              ssrKey: meal.ssrKey || ""
+              ssrKey: (meal.ssrKeysByPassenger && meal.ssrKeysByPassenger[passengerKeys[travellerIdx]]) || meal.ssrKey || "",
+              journeyKey: meal.journeyKey || getJourneyKeyForFlightKey(flightKey) || "",
+              segmentKey: getFlightSegmentKeys(flightOptions.find((o, i) => getFlightStorageKey(i) === flightKey))[0] || ""
             });
           }
         });
@@ -1483,12 +1495,7 @@ body{
       selected_travellers: selectedTravellerValues.join(","),
       travellerNames: bookingContext.travellerNames.join(","),
       meals: selectedMeals,
-      selected_meal: selectedMeals.map(m => {
-        if (m.ssrCode) {
-          return `${m.travellerIndex + 1}|${m.ssrCode}|${m.ssrKey || ""}|${m.price}|${m.qty}`;
-        }
-        return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
-      }).join(","),
+      selected_meal: selectedMeals.map(encodeMealItem).join(","),
       totalItems: selectedMeals.reduce((sum, item) => sum + item.qty, 0),
       totalAmount: selectedMeals.reduce((sum, item) => sum + item.qty * item.price, 0)
     };
