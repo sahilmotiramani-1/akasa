@@ -1381,6 +1381,11 @@ body{
   // Each meal line item now also carries the traveller name it belongs to:
   //   traveller:mealName:qty:price  (joined by "~")
   // -------------------------
+  // Haptik treats ";;" (what we turn commas into) as a list separator and keeps
+  // only the FIRST value of a captured parameter, so multi-item lists must use
+  // a separator that survives untouched.
+  const ITEM_SEP = "~";
+
   // One meal line: traveller|ssrCode|ssrKey|price|qty|journeyKey|segmentKey
   // (commas are reserved as item separators, so only a single leg key is sent).
   function encodeMealItem(m) {
@@ -1393,7 +1398,7 @@ body{
   function sendOrderToBot(orderData) {
     const mealsEncoded = orderData.meals
       .map(encodeMealItem)
-      .join(",");
+      .join(ITEM_SEP);
 
     let data =
       "pnr=" + orderData.pnr +
@@ -1492,10 +1497,10 @@ body{
       travellers: bookingContext.travellers,
       flight_segment_key: selectedFlightSegmentKey || (segmentKeys[0] || ""),
       segment_keys: getAllSegmentKeys().join(","),
-      selected_travellers: selectedTravellerValues.join(","),
+      selected_travellers: selectedTravellerValues.join(ITEM_SEP),
       travellerNames: bookingContext.travellerNames.join(","),
       meals: selectedMeals,
-      selected_meal: selectedMeals.map(encodeMealItem).join(","),
+      selected_meal: selectedMeals.map(encodeMealItem).join(ITEM_SEP),
       totalItems: selectedMeals.reduce((sum, item) => sum + item.qty, 0),
       totalAmount: selectedMeals.reduce((sum, item) => sum + item.qty * item.price, 0)
     };
