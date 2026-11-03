@@ -1431,7 +1431,7 @@ body{
   // (commas are reserved as item separators, so only a single leg key is sent).
   function encodeMealItem(m) {
     if (m.ssrCode) {
-      return [m.travellerIndex + 1, m.ssrCode, m.ssrKey || "", m.price, m.qty, m.journeyKey || "", m.segmentKey || ""].join("|");
+      return [m.travellerIndex + 1, m.ssrCode, m.ssrKey || "-", m.price, m.qty, m.journeyKey || "-", m.segmentKey || "-"].join("|");
     }
     return `${m.traveller}:${m.name}:${m.qty}:${m.price}`;
   }
