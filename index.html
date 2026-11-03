@@ -433,6 +433,29 @@ body{
     render();
   }
 
+  // Copy the currently selected meals for this flight to every passenger.
+  // Individual passenger selections remain editable after applying.
+  function applyCurrentTravellerMealsToAll() {
+    const flightKey = getCurrentFlightKey();
+    const sourceQuantities = {
+      ...(quantities[flightKey]?.[currentTraveller] || {})
+    };
+
+    const hasSelection = Object.values(sourceQuantities).some(qty => Number(qty) > 0);
+    if (!hasSelection) {
+      alert("Please select at least one meal for the current traveller first.");
+      return;
+    }
+
+    if (!quantities[flightKey]) quantities[flightKey] = {};
+
+    bookingContext.travellerNames.forEach((_, travellerIdx) => {
+      quantities[flightKey][travellerIdx] = { ...sourceQuantities };
+    });
+
+    render();
+  }
+
   function renderFlightSelector() {
     const wrap = document.getElementById("flightSelectorWrap");
     if (!wrap) return;
@@ -488,6 +511,24 @@ body{
     wrap.innerHTML = "";
     wrap.appendChild(label);
     wrap.appendChild(select);
+
+    if (bookingContext.travellerNames.length > 1) {
+      const applyAllButton = document.createElement("button");
+      applyAllButton.type = "button";
+      applyAllButton.textContent = "Apply selected meals to all travellers";
+      applyAllButton.className = "apply-all-travellers-btn";
+      applyAllButton.style.marginTop = "8px";
+      applyAllButton.style.padding = "9px 12px";
+      applyAllButton.style.border = "1px solid #d0d5dd";
+      applyAllButton.style.borderRadius = "8px";
+      applyAllButton.style.background = "#ffffff";
+      applyAllButton.style.color = "#344054";
+      applyAllButton.style.fontSize = "13px";
+      applyAllButton.style.fontWeight = "600";
+      applyAllButton.style.cursor = "pointer";
+      applyAllButton.onclick = applyCurrentTravellerMealsToAll;
+      wrap.appendChild(applyAllButton);
+    }
   }
 
   function getFlightStorageKey(index = selectedFlightIndex) {
