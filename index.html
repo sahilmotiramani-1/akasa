@@ -1291,7 +1291,7 @@ body{
         const increaseBtn = document.createElement("button");
         increaseBtn.type = "button";
         increaseBtn.className = "qty-btn";
-        increaseBtn.disabled = qty >= MAX_QTY;
+        increaseBtn.disabled = price === 0 || qty >= MAX_QTY;
         increaseBtn.textContent = "+";
         increaseBtn.addEventListener("click", () => {
           increase(mealKey);
@@ -1329,6 +1329,32 @@ body{
 
   function increase(mealKey) {
     const travellerQty = getCurrentTravellerQuantities();
+    const currentMeals = getMealsForFlightKey(getCurrentFlightKey());
+    const selectedMeal = currentMeals.find(
+      meal => (meal.ssrKey || meal.ssrCode || meal.mealName) === mealKey
+    );
+
+    // Complimentary (₹0) meals are mutually exclusive:
+    // only one free meal can be selected for a traveller on a flight.
+    // Selecting another free meal replaces the previously selected one.
+    if (selectedMeal && getPrice(selectedMeal) === 0) {
+      currentMeals.forEach(meal => {
+        const existingMealKey = meal.ssrKey || meal.ssrCode || meal.mealName;
+        if (
+          existingMealKey !== mealKey &&
+          getPrice(meal) === 0 &&
+          travellerQty[existingMealKey] > 0
+        ) {
+          delete travellerQty[existingMealKey];
+        }
+      });
+
+      // A free meal can only ever have quantity 1.
+      travellerQty[mealKey] = 1;
+      render();
+      return;
+    }
+
     if (!travellerQty[mealKey]) travellerQty[mealKey] = 0;
     if (travellerQty[mealKey] < MAX_QTY) {
       travellerQty[mealKey]++;
