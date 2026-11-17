@@ -323,11 +323,8 @@ body{
   const MAX_QTY = 5;
   const FALLBACK_IMG = "https://via.placeholder.com/100";
 
-  // Mock pricing - in real app, this would come from API
-  const MEAL_PRICES = {
-    "Easter Special ( Non-Veg)": 850,
-    "default": 650
-  };
+  // Meal prices are sourced exclusively from SSR Availability V2.
+  // Missing passenger-specific prices remain unavailable; no local fallback is used.
 
   // -------------------------
   // Booking context, prefilled from the URL the bot builds
@@ -821,6 +818,12 @@ body{
     return map;
   }
 
+  function parseApiPrice(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = typeof value === "number" ? value : Number(String(value).replace(/,/g, "").trim());
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }
+
   function parseSsrAvailabilityMeals(data) {
     const journeySsrs = data?.data?.ssrAvailability?.journeySsrs || [];
     const parsedMeals = [];
@@ -832,37 +835,38 @@ body{
       allItems.forEach(item => {
         if (!item || !item.ssrCode) return;
 
-        let passengerAvailability = [];
-        if (Array.isArray(item.passengerAvailability)) {
-          passengerAvailability = item.passengerAvailability;
-        } else if (item.passengerAvailability && typeof item.passengerAvailability === "object") {
-          passengerAvailability = [item.passengerAvailability];
-        }
+        const passengerAvailability = Array.isArray(item.passengerAvailability)
+          ? item.passengerAvailability
+          : (item.passengerAvailability && typeof item.passengerAvailability === "object"
+              ? [item.passengerAvailability]
+              : []);
 
-        let availability = passengerAvailability.find(p => passengerKeys.length === 0 || passengerKeys.includes(p.passengerKey));
-        if (!availability) {
-          availability = passengerAvailability[0] || {};
-        }
-
-        const priceValue = availability.price ?? availability.amount ?? item.price ?? 0;
-        const price = typeof priceValue === "number" ? priceValue : parseFloat(priceValue) || 0;
-
+        // Keep each passenger's own API price and SSR key. Never borrow another
+        // passenger's price and never substitute a hardcoded/default amount.
+        const pricesByPassenger = {};
         const ssrKeysByPassenger = {};
         passengerAvailability.forEach(p => {
-          if (p && p.passengerKey && p.ssrKey) ssrKeysByPassenger[p.passengerKey] = p.ssrKey;
+          if (!p || !p.passengerKey) return;
+          const apiPrice = parseApiPrice(p.price ?? p.amount);
+          if (apiPrice !== null) pricesByPassenger[p.passengerKey] = apiPrice;
+          if (p.ssrKey) ssrKeysByPassenger[p.passengerKey] = p.ssrKey;
         });
+
+        const firstAvailablePassenger = passengerAvailability.find(p =>
+          p && passengerKeys.includes(p.passengerKey)
+        ) || passengerAvailability[0] || {};
 
         parsedMeals.push({
           ssrCode: item.ssrCode,
           ssrKeysByPassenger,
-          ssrKey: availability.ssrKey || item.ssrKey || "",
+          pricesByPassenger,
+          ssrKey: firstAvailablePassenger.ssrKey || item.ssrKey || "",
           journeyKey,
           mealName: item.ssrName || item.name || item.ssrCode,
           mealDescription: item.description || item.ssrName || item.name || "",
           mealThumbnailImage: item.imageUrl || item.mealThumbnailImage || item.thumbnailImage || "",
           nutritionFacts: item.nutritionFacts || item.nutrition || [],
           beverageIncluded: item.beverageIncluded || false,
-          price,
           mealTagInfo: item.mealTagInfo || item.mealTags || [],
         });
       });
@@ -871,11 +875,10 @@ body{
     return parsedMeals;
   }
 
-  function getPrice(meal) {
-    if (typeof meal.price === "number") {
-      return meal.price;
-    }
-    return MEAL_PRICES[meal.mealName] || MEAL_PRICES["default"];
+  function getPrice(meal, passengerKey = passengerKeys[currentTraveller]) {
+    if (!meal || !passengerKey) return null;
+    const price = meal.pricesByPassenger?.[passengerKey];
+    return Number.isFinite(price) && price >= 0 ? price : null;
   }
 
   function getEnergy(meal) {
@@ -1130,7 +1133,7 @@ body{
     pageItems.forEach((meal, i) => {
       const mealKey = meal.ssrKey || meal.ssrCode || meal.mealName || `${start + i}`;
       const qty = travellerQty[mealKey] || 0;
-      const price = getPrice(meal);
+      const price = getPrice(meal, passengerKeys[currentTraveller]);
       const beverageIncluded = meal.beverageIncluded;
       const tags = meal.mealTagInfo || [];
 
@@ -1270,9 +1273,10 @@ body{
         const addBtn = document.createElement("button");
         addBtn.type = "button";
         addBtn.className = "meal-add-btn";
-        addBtn.textContent = `Add • ₹${price}`;
+        addBtn.disabled = price === null;
+        addBtn.textContent = price === null ? "Price unavailable" : `Add • ₹${price}`;
         addBtn.addEventListener("click", () => {
-          increase(mealKey);
+          if (price !== null) increase(mealKey);
         });
         qtyBox.appendChild(addBtn);
       } else {
@@ -1334,15 +1338,20 @@ body{
       meal => (meal.ssrKey || meal.ssrCode || meal.mealName) === mealKey
     );
 
+    // A meal can only be selected when the API returned a valid price
+    // for this exact passenger. Zero is a valid API price.
+    const selectedPrice = selectedMeal ? getPrice(selectedMeal, passengerKeys[currentTraveller]) : null;
+    if (!selectedMeal || selectedPrice === null) return;
+
     // Complimentary (₹0) meals are mutually exclusive:
     // only one free meal can be selected for a traveller on a flight.
     // Selecting another free meal replaces the previously selected one.
-    if (selectedMeal && getPrice(selectedMeal) === 0) {
+    if (selectedPrice === 0) {
       currentMeals.forEach(meal => {
         const existingMealKey = meal.ssrKey || meal.ssrCode || meal.mealName;
         if (
           existingMealKey !== mealKey &&
-          getPrice(meal) === 0 &&
+          getPrice(meal, passengerKeys[currentTraveller]) === 0 &&
           travellerQty[existingMealKey] > 0
         ) {
           delete travellerQty[existingMealKey];
@@ -1395,17 +1404,21 @@ body{
   }
 
   function getTotalAmount() {
-    const flightKey = getCurrentFlightKey();
     let total = 0;
-    Object.keys(quantities[flightKey] || {}).forEach(t => {
-      const travellerQty = quantities[flightKey][t] || {};
-      Object.keys(travellerQty).forEach(mealKey => {
-        if (travellerQty[mealKey] > 0) {
-          const meal = getMealsForFlightKey(flightKey).find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
-          if (meal) {
-            total += getPrice(meal) * travellerQty[mealKey];
+    Object.keys(quantities).forEach(flightKey => {
+      const flightMeals = getMealsForFlightKey(flightKey);
+      Object.keys(quantities[flightKey] || {}).forEach(t => {
+        const travellerIndex = parseInt(t, 10);
+        const passengerKey = passengerKeys[travellerIndex];
+        const travellerQty = quantities[flightKey][t] || {};
+        Object.keys(travellerQty).forEach(mealKey => {
+          const qty = travellerQty[mealKey];
+          if (qty > 0) {
+            const meal = flightMeals.find(m => (m.ssrKey || m.ssrCode || m.mealName) === mealKey);
+            const price = meal ? getPrice(meal, passengerKey) : null;
+            if (price !== null) total += price * qty;
           }
-        }
+        });
       });
     });
     return total;
@@ -1517,7 +1530,7 @@ body{
               travellerIndex: travellerIdx,
               name: meal.mealName,
               qty,
-              price: getPrice(meal),
+              price: getPrice(meal, passengerKeys[travellerIdx]),
               ssrCode: meal.ssrCode || meal.mealSsrCode || "",
               ssrKey: (meal.ssrKeysByPassenger && meal.ssrKeysByPassenger[passengerKeys[travellerIdx]]) || meal.ssrKey || "",
               journeyKey: meal.journeyKey || getJourneyKeyForFlightKey(flightKey) || "",
@@ -1551,6 +1564,18 @@ body{
 
     if (!selectedMeals.length) {
       alert("Select at least one item");
+      return;
+    }
+
+    const invalidPriceMeal = selectedMeals.find(item => !Number.isFinite(item.price) || item.price < 0);
+    if (invalidPriceMeal) {
+      alert("The price for one or more selected meals is unavailable from the SSR API. Please remove the item or refresh meal availability.");
+      return;
+    }
+
+    const missingSsrKeyMeal = selectedMeals.find(item => !item.ssrKey);
+    if (missingSsrKeyMeal) {
+      alert("The SSR details for one or more selected meals are unavailable. Please refresh meal availability and try again.");
       return;
     }
 
