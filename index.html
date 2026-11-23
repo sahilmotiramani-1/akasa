@@ -430,6 +430,10 @@ body{
     render();
   }
 
+  /*
+   * Temporarily disabled: Apply selected meals to all travellers.
+   * This functionality can be re-enabled when the feature is implemented later.
+   *
   // Copy the currently selected meals for this flight to every passenger.
   // Individual passenger selections remain editable after applying.
   function applyCurrentTravellerMealsToAll() {
@@ -452,6 +456,7 @@ body{
 
     render();
   }
+  */
 
   function renderFlightSelector() {
     const wrap = document.getElementById("flightSelectorWrap");
@@ -509,6 +514,10 @@ body{
     wrap.appendChild(label);
     wrap.appendChild(select);
 
+    /*
+     * Temporarily disabled: Apply selected meals to all travellers button.
+     * Keeping this code commented for possible future implementation.
+     *
     if (bookingContext.travellerNames.length > 1) {
       const applyAllButton = document.createElement("button");
       applyAllButton.type = "button";
@@ -526,6 +535,7 @@ body{
       applyAllButton.onclick = applyCurrentTravellerMealsToAll;
       wrap.appendChild(applyAllButton);
     }
+    */
   }
 
   function getFlightStorageKey(index = selectedFlightIndex) {
