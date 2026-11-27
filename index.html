@@ -261,6 +261,7 @@ body{
     </div>
 
     <div id="menu" class="menu-container"></div>
+    <div id="fallbackUsedNote" style="display:none; margin:4px 3px 12px; font-size:9px; color:#777;">* fallback used</div>
 
     <div class="controls">
       <button onclick="prevPage()">← Prev</button>
@@ -307,6 +308,7 @@ body{
   let meals = [];
   // Explicit loading state: an empty array must NOT mean "no meals" while SSR is still loading.
   let mealsLoading = true;
+  let storyblokFallbackUsed = false;
 
   // Meals are also indexed by the selected flight so multiple journeys never
   // accidentally render another journey's meals.
@@ -932,17 +934,189 @@ body{
     return headers;
   }
 
+  // Storyblok content can be nested in components/arrays. Walk it and
+  // collect meal-like records without assuming one fixed Storyblok schema.
+  function parseStoryblokMeals(storyblokResponse) {
+    const root = storyblokResponse?.story?.content || storyblokResponse?.story || storyblokResponse;
+    const records = [];
+    const seen = new Set();
+
+    function textValue(value) {
+      if (value == null) return "";
+      if (typeof value === "string" || typeof value === "number") return String(value);
+      if (Array.isArray(value)) return value.map(textValue).filter(Boolean).join(" ");
+      if (typeof value === "object") {
+        if (value.filename) return value.filename;
+        if (value.url) return value.url;
+        if (value.text) return String(value.text);
+        if (Array.isArray(value.content)) return value.content.map(textValue).filter(Boolean).join(" ");
+      }
+      return "";
+    }
+
+    function firstValue(obj, keys) {
+      for (const key of keys) {
+        const value = obj?.[key];
+        if (value !== undefined && value !== null && value !== "") return value;
+      }
+      return "";
+    }
+
+    function walk(value) {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) {
+        value.forEach(walk);
+        return;
+      }
+
+      const name = textValue(firstValue(value, [
+        "mealName", "ssrName", "name", "title", "meal_name", "productName"
+      ])).trim();
+      const code = textValue(firstValue(value, [
+        "ssrCode", "mealCode", "ssr_code", "code"
+      ])).trim();
+      const description = textValue(firstValue(value, [
+        "mealDescription", "description", "shortDescription", "meal_description"
+      ])).trim();
+
+      const looksLikeMeal = Boolean(
+        name && (
+          code ||
+          /meal|food|beverage|drink|sandwich|burger|biryani|wrap|salad|dessert|snack|coffee|tea/i.test(
+            [name, description, value.component || ""].join(" ")
+          ) ||
+          value.mealThumbnailImage || value.imageUrl || value.image
+        )
+      );
+
+      if (looksLikeMeal) {
+        const identity = `${code}|${name}`.toLowerCase();
+        if (!seen.has(identity)) {
+          seen.add(identity);
+
+          const rawPrice = firstValue(value, [
+            "price", "mealPrice", "amount", "sellingPrice", "meal_price"
+          ]);
+          let price = null;
+          if (rawPrice !== "") {
+            const parsed = typeof rawPrice === "number"
+              ? rawPrice
+              : Number(String(rawPrice).replace(/[₹,\s]/g, ""));
+            if (Number.isFinite(parsed) && parsed >= 0) price = parsed;
+          }
+
+          const imageValue = firstValue(value, [
+            "mealThumbnailImage", "imageUrl", "thumbnailImage", "image", "photo"
+          ]);
+          const tagValue = firstValue(value, ["mealTagInfo", "mealTags", "tags"]);
+          const tags = Array.isArray(tagValue)
+            ? tagValue.map(tag => typeof tag === "string"
+                ? { mealTag: tag, mealTagColorCode: "#666", mealTagTextColor: "#fff" }
+                : {
+                    mealTag: textValue(tag?.mealTag || tag?.name || tag?.tag || tag?.title),
+                    mealTagColorCode: tag?.mealTagColorCode || tag?.color || "#666",
+                    mealTagTextColor: tag?.mealTagTextColor || "#fff"
+                  }).filter(tag => tag.mealTag)
+            : [];
+
+          const pricesByPassenger = {};
+          passengerKeys.forEach(passengerKey => {
+            if (price !== null) pricesByPassenger[passengerKey] = price;
+          });
+
+          const ssrKeysByPassenger = {};
+          const passengerSsrKey = firstValue(value, ["ssrKey", "ssr_key", "key"]);
+          if (passengerSsrKey) {
+            passengerKeys.forEach(passengerKey => {
+              ssrKeysByPassenger[passengerKey] = String(passengerSsrKey);
+            });
+          }
+
+          records.push({
+            ssrCode: code,
+            ssrKeysByPassenger,
+            pricesByPassenger,
+            ssrKey: passengerSsrKey ? String(passengerSsrKey) : "",
+            journeyKey: textValue(firstValue(value, ["journeyKey", "journey_key"])),
+            mealName: name,
+            mealDescription: description,
+            mealThumbnailImage: imageValue,
+            nutritionFacts: firstValue(value, ["nutritionFacts", "nutrition", "nutritionalFacts"]) || [],
+            beverageIncluded: Boolean(firstValue(value, ["beverageIncluded", "beverage_included"])),
+            mealTagInfo: tags,
+            mealPreference: textValue(firstValue(value, ["mealPreference", "mealType", "dietaryType"])),
+            prebookLiner: textValue(firstValue(value, ["prebookLiner", "label"]))
+          });
+        }
+      }
+
+      Object.values(value).forEach(walk);
+    }
+
+    walk(root);
+    return records.filter(meal => meal.mealName);
+  }
+
+  function setFallbackNote(used) {
+    storyblokFallbackUsed = Boolean(used);
+    const note = document.getElementById("fallbackUsedNote");
+    if (note) note.style.display = storyblokFallbackUsed ? "block" : "none";
+  }
+
+  async function loadStoryblokFallback(reason) {
+    console.warn("SSR meal API unavailable; trying Storyblok fallback:", reason);
+
+    try {
+      const response = await fetch(STORYBLOK_API_URL, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error(`Storyblok request failed with status ${response.status}`);
+      }
+
+      const storyblokData = await response.json();
+      const fallbackMeals = parseStoryblokMeals(storyblokData);
+
+      if (!fallbackMeals.length) {
+        throw new Error("Storyblok response did not contain recognizable meal records.");
+      }
+
+      meals = fallbackMeals;
+      mealsByFlight = {};
+      if (flightOptions.length <= 1) {
+        mealsByFlight[getFlightStorageKey(0)] = fallbackMeals;
+      } else {
+        // Storyblok is a catalogue fallback, not a journey-specific availability feed.
+        // Display the catalogue for the currently selected flight only.
+        mealsByFlight[getCurrentFlightKey()] = fallbackMeals;
+      }
+
+      setFallbackNote(true);
+      console.warn("Storyblok fallback loaded:", fallbackMeals.length, "meal records");
+    } catch (fallbackError) {
+      console.error("Storyblok fallback also failed:", fallbackError);
+      meals = [];
+      mealsByFlight = {};
+      setFallbackNote(false);
+    } finally {
+      mealsLoading = false;
+      render();
+    }
+  }
+
   async function fetchMeals() {
     mealsLoading = true;
     meals = [];
     mealsByFlight = {};
+    setFallbackNote(false);
     currentPage = 0;
     render();
 
     if (!(passengerKeys.length && authToken && qpBotApiKey)) {
-      console.warn("SSR availability request skipped: missing passengerKeys/authToken/qpBotApiKey.");
-      mealsLoading = false;
-      render();
+      await loadStoryblokFallback("Missing passengerKeys/authToken/qpBotApiKey.");
       return;
     }
 
@@ -950,39 +1124,31 @@ body{
       const res = await fetch(SSR_AVAILABILITY_URL, {
         method: "POST",
         headers: apiHeaders(),
-        body: JSON.stringify(passengerKeys),
+        body: JSON.stringify(passengerKeys)
       });
 
       if (!res.ok) {
-        console.warn("SSR availability fetch failed with status", res.status);
-        meals = [];
-        mealsByFlight = {};
-        mealsLoading = false;
-        render();
+        await loadStoryblokFallback(`SSR API returned HTTP ${res.status}.`);
         return;
       }
 
       const data = await res.json();
-
       const parsedMeals = parseSsrAvailabilityMeals(data);
-      meals = parsedMeals;
-      mealsByFlight = mapMealsToFlights(data, parsedMeals);
 
-      if (!meals.length) {
-        console.warn("SSR availability returned no meals.", data);
+      if (!parsedMeals.length) {
+        await loadStoryblokFallback("SSR API returned no usable meal records.");
+        return;
       }
 
+      meals = parsedMeals;
+      mealsByFlight = mapMealsToFlights(data, parsedMeals);
+      setFallbackNote(false);
       mealsLoading = false;
       render();
     } catch (err) {
-      console.warn("SSR availability fetch failed.", err);
-      meals = [];
-      mealsByFlight = {};
-      mealsLoading = false;
-      render();
+      await loadStoryblokFallback(err?.message || "SSR API request failed.");
     }
   }
-
 
   let activeMealCategory = "all";
   let onlyVeg = false;
