@@ -287,7 +287,7 @@ body{
   </div>
 
   <script>
-  const SSR_AVAILABILITY_URL = "https://staging-agents-relay-uat.qp.akasaair.com/bgws/api/ibe/agents/ssrAvailabilityV2";
+  const SSR_AVAILABILITY_URL = "/api/ibe/agents/ssrAvailabilityV2"; // via vercel.json rewrite
   const STORYBLOK_API_URL = "https://api.storyblok.com/v2/cdn/stories/add-on/cafe-akasa?cv=1776840359&token=sH9JxEKw9A4QBfyCtQLD8Qtt&version=published";
   const DEFAULT_API_SOURCE = "CHATBOTWEB";
 
@@ -1125,7 +1125,8 @@ body{
       const res = await fetch(SSR_AVAILABILITY_URL, {
         method: "POST",
         headers: apiHeaders(),
-        body: JSON.stringify(passengerKeys)
+        body: JSON.stringify(passengerKeys),
+        referrerPolicy: "no-referrer"
       });
 
       if (!res.ok) {
