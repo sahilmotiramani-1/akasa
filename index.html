@@ -994,9 +994,8 @@ body{
         if (!seen.has(identity)) {
           seen.add(identity);
 
-          const rawPrice = firstValue(value, [
-            "price", "mealPrice", "amount", "sellingPrice", "meal_price"
-          ]);
+          // Storyblok price fields are intentionally ignored while fallback pricing is set to ₹0.
+          const rawPrice = "";
           let price = null;
           if (rawPrice !== "") {
             const parsed = typeof rawPrice === "number"
@@ -1019,9 +1018,11 @@ body{
                   }).filter(tag => tag.mealTag)
             : [];
 
+          // Temporary Storyblok fallback pricing: show every fallback meal at ₹0.
+          // Live SSR Availability V2 prices remain unchanged when the primary API succeeds.
           const pricesByPassenger = {};
           passengerKeys.forEach(passengerKey => {
-            if (price !== null) pricesByPassenger[passengerKey] = price;
+            pricesByPassenger[passengerKey] = 0;
           });
 
           const ssrKeysByPassenger = {};
